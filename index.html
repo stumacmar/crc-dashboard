@@ -2,13 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Crash RAG Composite — Turbo (single-run)</title>
+<title>Crash RAG Composite — United States (Turbo)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
-  :root{
-    --bg:#0b1020;--panel:#121839;--panel2:#101633;--ink:#e8eefb;--muted:#a8b4d8;
-    --b:#22283f;--ok:#0d7a46;--warn:#a86700;--bad:#8f1626;--chip:#1c244b;
-  }
+  :root{--bg:#0b1020;--panel:#121839;--panel2:#101633;--ink:#e8eefb;--muted:#a8b4d8;--b:#22283f;--ok:#0d7a46;--warn:#a86700;--bad:#8f1626;--chip:#1c244b;}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
   header{padding:16px 12px;border-bottom:1px solid var(--b);text-align:center}
   h1{margin:0;font-size:22px}
@@ -79,14 +76,14 @@
 </div>
 
 <script>
-/* =================== CONFIG =================== */
+/* ========= CONFIG ========= */
 const DEFAULT_KEY = "b78d7171c0fc257622597099f88fa7f7";
 const YEARS_BACK = 10;
 const REQ_TIMEOUT_MS = 5000;
 const CONCURRENCY = 8;
 const AUTO_RUN_ON_LOAD = true;
 
-// Core set (fast)
+/* Core set (fast). Add per-series query params in `q` (e.g., SP500 monthly). */
 const CORE = [
   { id:"UNRATE",     name:"Unemployment rate",                invert:true },
   { id:"ICSA",       name:"Initial jobless claims (wkly)",    invert:true },
@@ -98,10 +95,182 @@ const CORE = [
   { id:"RSAFS",      name:"Retail sales (advance)",           invert:false },
   { id:"HOUST",      name:"Housing starts",                   invert:false },
   { id:"PERMIT",     name:"Building permits",                 invert:false },
-  { id:"SP500MN",    name:"S&P 500 (monthly avg)",            invert:false }, // lighter than SP500 daily
+  // S&P 500 monthly via aggregation (fast + stable)
+  { id:"SP500",      name:"S&P 500 (monthly avg)",            invert:false, q:{frequency:"m", aggregation_method:"avg"} },
   { id:"VIXCLS",     name:"VIX index",                        invert:true },
   { id:"T10Y3M",     name:"10Y-3M spread",                    invert:true },
   { id:"T10Y2Y",     name:"10Y-2Y spread",                    invert:true },
   { id:"DGS10",      name:"10Y Treasury yield",               invert:true },
   { id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS",                invert:true },
-  { id:"STLFSI
+  // use current Financial Stress idx
+  { id:"STLFSI4",    name:"St. Louis Financial Stress (v4)",  invert:true },
+  { id:"NFCI",       name:"Chicago Fed Fin. Conditions",      invert:true },
+  { id:"UMCSENT",    name:"UMich consumer sentiment",         invert:false },
+  { id:"DTWEXBGS",   name:"Trade-weighted USD (broad)",       invert:true },
+];
+
+/* Extras kept the same; omitted here for brevity in Core runs */
+const FULL_EXTRA = [
+  { id:"PAYEMS", name:"Nonfarm payrolls", invert:false },
+  { id:"CSUSHPINSA", name:"Case-Shiller HPI", invert:false },
+  { id:"MORTGAGE30US", name:"30y mortgage rate", invert:true },
+  { id:"DCOILWTICO", name:"WTI crude", invert:true },
+  { id:"GOLDAMGBD228NLBM", name:"Gold (London AM USD)", invert:true },
+  { id:"NASDAQCOM", name:"NASDAQ Composite", invert:false },
+  { id:"WILL5000INDFC", name:"Wilshire 5000", invert:false },
+  { id:"AAA", name:"Moody’s AAA yield", invert:true },
+  { id:"BAA", name:"Moody’s BAA yield", invert:true },
+  { id:"BAA10Y", name:"BAA – 10Y spread", invert:true },
+  { id:"TB3MS", name:"3-mo T-Bill", invert:true },
+  { id:"DGS2", name:"2Y Treasury", invert:true },
+  { id:"CP3M", name:"Commercial paper 3m", invert:true },
+  { id:"H8B1058NCBCMG", name:"Bank credit (wkly)", invert:true },
+  { id:"TOTALSA", name:"Light vehicle sales", invert:false },
+  { id:"PPIACO", name:"PPI all commodities", invert:true },
+  { id:"BUSLOANS", name:"C&I loans", invert:true },
+  { id:"IC4WSA", name:"Initial claims (4wk avg)", invert:true },
+  { id:"CCSA", name:"Continued claims", invert:true },
+  { id:"DSPIC96", name:"Real disposable income", invert:false },
+  { id:"NAPM", name:"ISM Manufacturing PMI", invert:true },
+  { id:"NAPMS", name:"ISM Services PMI", invert:true },
+  { id:"T5YIE", name:"5Y TIPS breakeven", invert:true },
+  { id:"T10YIE", name:"10Y TIPS breakeven", invert:true },
+  { id:"BAMLCC0A0CM", name:"IG OAS", invert:true },
+];
+
+const $ = s => document.querySelector(s);
+const log = m => { const el=$("#log"); el.textContent += (el.textContent? "\n":"") + m; el.scrollTop = el.scrollHeight; };
+const setCRC = (t,c) => { const el=$("#crc"); el.textContent=t; el.className="badge "+c; };
+function fredURL(seriesId, key, q={}){
+  const u = new URL("https://api.stlouisfed.org/fred/series/observations");
+  u.searchParams.set("series_id", seriesId);
+  u.searchParams.set("api_key", key);
+  u.searchParams.set("file_type","json");
+  // optional per-series params (e.g., monthly aggregation)
+  for(const [k,v] of Object.entries(q)) u.searchParams.set(k, v);
+  return u.toString();
+}
+function dedupe(arr){ const s=new Set(); return arr.filter(x=>!s.has(x.id)&&s.add(x.id)); }
+
+function proxyList(url){
+  return [
+    `https://cors.isomorphic-git.org/${url}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://thingproxy.freeboard.io/fetch/${url}`,
+    `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`
+  ];
+}
+async function fetchJSONRace(url){
+  const ctls=[];
+  const mk = p => new Promise(async (resolve,reject)=>{
+    const ctl=new AbortController(); ctls.push(ctl);
+    try{
+      const r = await fetch(p,{signal:ctl.signal,cache:"no-store"});
+      if(!r.ok) return reject(new Error(`HTTP ${r.status}`));
+      const t = await r.text();
+      try{ resolve({ data: JSON.parse(t), proxy: new URL(p).host }); }
+      catch{ reject(new Error("Bad JSON")); }
+    }catch(e){ reject(e); }
+  });
+  const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), REQ_TIMEOUT_MS));
+  try{
+    const res = await Promise.any([timeout, ...proxyList(url).map(mk)]);
+    ctls.forEach(c=>{ try{c.abort();}catch{} });
+    return res;
+  }catch(e){
+    ctls.forEach(c=>{ try{c.abort();}catch{} });
+    throw e;
+  }
+}
+
+function pctRank(sample, x){ let below=0,equal=0; for(const v of sample){ if(v<x) below++; else if(v===x) equal++; } return ((below+0.5*equal)/sample.length)*100; }
+function window10y(obs){ const cut=new Date(); cut.setFullYear(cut.getFullYear()-YEARS_BACK); return obs.filter(o=>new Date(o.date)>=cut); }
+function fmt(x){ return (x==null||Number.isNaN(x))?"—":(Math.abs(x)>=1000?Number(x).toLocaleString():x.toString()); }
+
+async function mapPool(items, limit, fn){
+  const out=Array(items.length); let i=0, active=0, done=0;
+  return await new Promise(resolve=>{
+    const step=()=>{ if(done===items.length) return resolve(out);
+      while(active<limit && i<items.length){
+        const idx=i++, it=items[idx]; active++;
+        (async()=>{ try{ out[idx]=await fn(it,idx); }catch(e){ out[idx]={error:e.message}; }
+          active--; done++; step(); })();
+      }
+    }; step();
+  });
+}
+
+async function fetchSeriesLatest(series, key){
+  const { data, proxy } = await fetchJSONRace(fredURL(series.id, key, series.q||{}));
+  const all=(data.observations||[]).map(o=>({date:o.date, v:o.value==="."?NaN:parseFloat(o.value)})).filter(x=>Number.isFinite(x.v));
+  const win = (window10y(all).length>=6 ? window10y(all) : all);
+  if(win.length<6) throw new Error("insufficient data");
+  const latest = win[win.length-1];
+  const sample = win.slice(0,-1).map(x=>x.v);
+  let p = pctRank(sample, latest.v);
+  if(!series.invert) p = 100 - p;
+  const score = Math.max(0, Math.min(100, Math.round(p)));
+  return { ok:true, id:series.id, name:series.name, val:latest.v, date:latest.date, score, proxy };
+}
+
+let running=false; const setRunning=on=>($("#run").disabled=running=on);
+
+async function run(){
+  if(running) return;
+  setRunning(true);
+  try{
+    const key = ($("#fredKey").value || DEFAULT_KEY).trim();
+    $("#fredKey").value = key;
+    $("#tbl tbody").innerHTML = "";
+    $("#log").textContent = "";
+    setCRC("CRC: Loading…","x");
+
+    const scope = ($("#scope").value==="full") ? dedupe([...CORE,...FULL_EXTRA]) : dedupe([...CORE]);
+    log(`Fetching ${scope.length} indicators (concurrency ${CONCURRENCY})`);
+
+    const res = await mapPool(scope, CONCURRENCY, async s=>{
+      log(`Fetching ${s.id} — ${s.name}`);
+      try{
+        const r = await fetchSeriesLatest(s,key);
+        log(`  ✓ ${s.id} via ${r.proxy}`);
+        return r;
+      }catch(e){
+        log(`  × ${s.id}: ${e.message}`);
+        return { ok:false, id:s.id, name:s.name, val:"—", date:"—", score:"—", proxy:"—", err:e.message };
+      }
+    });
+
+    const tb=$("#tbl tbody"); const scores=[];
+    for(const r of res){
+      if(r.ok) scores.push(r.score);
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${r.name}${r.ok?"":` <span class="muted small">(${r.err})</span>`}</td>
+        <td><span class="chip">${r.id}</span></td>
+        <td class="right">${r.val==="—"?"—":fmt(r.val)}</td>
+        <td>${r.date}</td>
+        <td class="right">${r.score==="—"?"—":r.score}</td>
+        <td>${r.proxy||"—"}</td>`;
+      tb.appendChild(tr);
+    }
+
+    if(!scores.length){ setCRC("CRC: ERROR (no data)","r"); log("No usable series."); return; }
+    const comp=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+    const cls = comp<40?"g":(comp<=70?"a":"r");
+    setCRC(`CRC: ${comp} — ${cls==="g"?"GREEN":cls==="a"?"AMBER":"RED"}`, cls);
+    log("Done.");
+  } finally { setRunning(false); }
+}
+
+let clickTimer=null;
+$("#run").addEventListener("click", ()=>{
+  if(clickTimer) return;
+  clickTimer=setTimeout(()=>{clickTimer=null;},400);
+  run();
+});
+document.addEventListener("DOMContentLoaded", ()=>{
+  $("#fredKey").value = DEFAULT_KEY;
+  if(AUTO_RUN_ON_LOAD) run();
+});
+</script>
+</body>
+</html>
