@@ -1,177 +1,303 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crash RAG Composite — United States (Turbo)</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="color-scheme" content="dark light"/>
+<title>The Marshall Stock Market Crash Composite Indicator</title>
 <style>
   :root{
-    --bg:#0a0f1e;--panel:#0f1630;--panel2:#0e1533;--border:#1a2346;
-    --ink:#e9f0ff;--muted:#a6b2d6;--accent:#6ea8ff;
-    --ok:#0bbf6a;--warn:#f2a93b;--bad:#e55353;
+    --bg:#0e1320;
+    --card:#131a2a;
+    --muted:#9fb0d6;
+    --text:#eaf0ff;
+    --accent:#7db0ff;
+    --amber:#f1a93c;
+    --green:#45c27b;
+    --red:#d85a5a;
+    --chip:#24304a;
+    --shadow: 0 6px 24px rgba(0,0,0,.35);
   }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
-  header{padding:22px 14px;border-bottom:1px solid var(--border);background:var(--panel)}
-  .wrap{max-width:1200px;margin:0 auto;padding:18px 14px}
-  h1{margin:0 0 6px 0;font-size:26px}.sub{color:var(--muted);font-size:14px}
-  .controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
-  input,button,select{border:1px solid var(--border);background:var(--panel2);color:var(--ink);border-radius:10px}
-  input{padding:10px;min-width:300px}
-  .btn{padding:10px 14px;font-weight:700;cursor:pointer;border:none}
-  .btn-primary{background:linear-gradient(135deg,#486bff,#2bd6ff);color:#fff}
-  .crc{margin:6px 0 18px;border-radius:12px;padding:16px;text-align:center;font-weight:900;font-size:20px}
-  .g{background:var(--ok)}.a{background:var(--warn)}.r{background:var(--bad)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}
-  .id{color:var(--accent);font-weight:700;font-size:13px}
-  .val{font-size:20px;font-weight:800;margin-top:6px}
-  .date{color:var(--muted);font-size:12px}
-  details{margin-top:18px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px}
-  summary{cursor:pointer;color:var(--accent);font-weight:700}
-  pre{white-space:pre-wrap;font-size:12px;color:var(--muted);margin:8px 0 0}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial}
+  .wrap{max-width:980px;margin:auto;padding:28px 16px 80px}
+  .brand{display:flex;gap:18px;align-items:center;margin:0 0 12px}
+  .alba-seal{width:84px;height:84px;flex:0 0 auto}
+  h1{font-size:clamp(22px,4vw,40px);margin:0}
+  .sub{margin:.25rem 0 0;color:var(--muted)}
+  .controls{display:flex;gap:10px;align-items:center;margin:22px 0 18px;flex-wrap:wrap}
+  input[type=text]{flex:1 1 380px;background:#0b0f1b;border:1px solid #27324b;color:var(--text);
+    border-radius:10px;padding:12px 14px;outline:none}
+  input::placeholder{color:#6f7da1}
+  button{background:linear-gradient(180deg,#4893ff,#3178ef);border:none;color:white;
+    padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+  select{background:#0b0f1b;border:1px solid #27324b;color:var(--text);border-radius:10px;padding:10px 12px}
+  .badge{display:inline-block;padding:16px 20px;border-radius:16px;font-weight:900;letter-spacing:.3px;
+    box-shadow:var(--shadow);margin:6px 0 18px;font-size:clamp(18px,3.2vw,26px)}
+  .badge.green{background:var(--green)}
+  .badge.amber{background:var(--amber)}
+  .badge.red{background:var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  @media (max-width:740px){.grid{grid-template-columns:1fr}.brand{flex-direction:column;align-items:flex-start}.alba-seal{width:72px;height:72px}}
+  .card{background:var(--card);border-radius:16px;padding:16px 16px 14px;border:1px solid #1e2942}
+  .card h3{margin:0 0 6px;font-size:18px}
+  .id{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 8px;color:#b9c7e8;font-size:12px;margin-left:6px}
+  .val{font-size:28px;font-weight:800;margin:8px 0 2px}
+  .meta{color:#90a4d4;font-size:13px}
+  .score{margin-top:10px;color:#b9c7e8}
+  .log{white-space:pre-wrap;background:#0b0f1b;border:1px solid #27324b;border-radius:12px;padding:14px;display:none}
+  .log.open{display:block}
+  details summary{cursor:pointer;color:#9fb0d6;margin:14px 0 0}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<header>
   <div class="wrap">
-    <h1>Crash RAG Composite — United States (Turbo)</h1>
-    <div class="sub">Parallel fetch (fast & reliable). RAG = percentile vs last 10y (invert where needed).</div>
-  </div>
-</header>
-<div class="wrap">
-  <div class="controls">
-    <input id="key" placeholder="Paste your FRED API key" />
-    <select id="set">
-      <option value="core">Core (fast, reliable)</option>
-      <option value="full">Full (+market breadth)</option>
-    </select>
-    <button class="btn btn-primary" onclick="run()">Run / Refresh</button>
-  </div>
 
-  <div id="crc" class="crc">CRC: Loading…</div>
-  <div id="grid" class="grid"></div>
+    <!-- Branding block with Alba seal -->
+    <div class="brand">
+      <svg class="alba-seal" viewBox="0 0 260 260" aria-label="Dèanta ann an Alba — seal" role="img">
+        <defs>
+          <path id="arcTop" d="M130,130 m0,-105 a105,105 0 1,1 0,210 a105,105 0 1,1 0,-210" />
+          <path id="arcBot" d="M130,130 m0,105 a105,105 0 1,1 0,-210 a105,105 0 1,1 0,210" />
+          <style>
+            .s-ring{fill:none;stroke:#dfe6ff;stroke-width:8}
+            .s-text{fill:#dfe6ff;font:700 24px/1 system-ui,-apple-system,Segoe UI,Inter,Roboto}
+            .s-knot{fill:none;stroke:#dfe6ff;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+          </style>
+        </defs>
+        <circle cx="130" cy="130" r="120" class="s-ring"/>
+        <circle cx="130" cy="130" r="100" class="s-ring"/>
+        <text class="s-text"><textPath href="#arcTop" startOffset="18%">DÈANTA ANN AN</textPath></text>
+        <text class="s-text"><textPath href="#arcBot" startOffset="42%">ALBA</textPath></text>
+        <path class="s-knot" d="M130 75 C 95 110, 95 150, 130 185 C 165 150, 165 110, 130 75 Z"/>
+        <path class="s-knot" d="M82 140 C 112 140, 148 140, 178 140"/>
+        <path class="s-knot" d="M98 106 C 120 120, 140 140, 162 154"/>
+        <path class="s-knot" d="M162 106 C 140 120, 120 140, 98 154"/>
+      </svg>
+      <div>
+        <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+        <p class="sub">Live U.S. crash-risk dashboard — powered by 20+ economic &amp; market indicators.</p>
+      </div>
+    </div>
 
-  <details>
-    <summary>Show Debug Log</summary>
-    <pre id="log"></pre>
-  </details>
-</div>
+    <!-- Controls -->
+    <div class="controls">
+      <input id="key" type="text" inputmode="latin" spellcheck="false" placeholder="Paste your FRED API key (32 chars)…"/>
+      <select id="preset">
+        <option value="core">Core (fast, reliable)</option>
+        <option value="full">Full set (20 indicators)</option>
+      </select>
+      <button id="run">Run / Refresh</button>
+    </div>
+
+    <!-- CRC badge -->
+    <div id="crc" class="badge amber">CRC: Loading…</div>
+
+    <!-- Cards -->
+    <div id="cards" class="grid" role="list"></div>
+
+    <!-- Debug -->
+    <details id="dbgWrap">
+      <summary>Show Debug Log</summary>
+      <div id="log" class="log"></div>
+    </details>
+  </div>
 
 <script>
-const CORE = [
-  {id:"UNRATE",name:"Unemployment rate",invert:1},
-  {id:"ICSA",name:"Initial jobless claims (wkly)",invert:1},
-  {id:"CPIAUCSL",name:"CPI (headline)",invert:1},
-  {id:"CPILFESL",name:"Core CPI",invert:1},
-  {id:"PCEPI",name:"PCE prices",invert:1},
-  {id:"INDPRO",name:"Industrial production"},
-  {id:"TCU",name:"Capacity utilization"},
-  {id:"RSAFS",name:"Retail sales (advance)"},
-  {id:"HOUST",name:"Housing starts"},
-  {id:"PERMIT",name:"Building permits"},
-  {id:"SP500",name:"S&P 500 index"},
-  {id:"VIXCLS",name:"VIX index",invert:1},
-  {id:"T10Y3M",name:"10Y–3M spread"},
-  {id:"T10Y2Y",name:"10Y–2Y spread"},
-  {id:"DGS10",name:"10Y Treasury yield"},
-  {id:"BAMLH0A0HYM2",name:"ICE BofA HY OAS",invert:1},
-  {id:"STLFSI4",name:"St. Louis Financial Stress (v4)",invert:1},
-  {id:"NFCI",name:"Chicago Fed Fin. Conditions",invert:1},
-  {id:"UMCSENT",name:"UMich consumer sentiment"},
-  {id:"DTWEXBGS",name:"Trade-weighted USD (broad)"}
+/* ========= Small utilities ========= */
+const $ = s => document.querySelector(s);
+const log = (...xs)=>{ const el=$("#log"); el.textContent += xs.join(" ") + "\n"; };
+const clearLog = ()=> $("#log").textContent="";
+const fmtNum = (n, d=2) => {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  const abs = Math.abs(n);
+  const decimals = abs>=1000 ? 0 : d;
+  return Number(n).toLocaleString(undefined,{maximumFractionDigits:decimals});
+};
+const parseVal = s => {
+  if (!s || s===".") return NaN;
+  const t = String(s).replace(/,/g,"");
+  return Number(t);
+};
+const colorFor = v => v>=70 ? "red" : v>=40 ? "amber" : "green";
+
+/* ========= Series definitions =========
+   invert=true means lower value = higher crash risk (e.g., yield spreads)
+*/
+const SERIES_FULL = [
+  {id:"DGS10",     name:"10Y Treasury yield",                 invert:false},
+  {id:"T10Y2Y",    name:"10Y–2Y spread",                      invert:true },
+  {id:"T10Y3M",    name:"10Y–3M spread",                      invert:true },
+  {id:"PERMIT",    name:"Building permits",                   invert:false},
+  {id:"TCU",       name:"Capacity utilization",               invert:false},
+  {id:"NFCI",      name:"Chicago Fed Fin. Conditions",        invert:false},
+  {id:"CPILFESL",  name:"Core CPI",                           invert:false},
+  {id:"CPIAUCSL",  name:"CPI (headline)",                     invert:false},
+  {id:"HOUST",     name:"Housing starts",                     invert:false},
+  {id:"ICSA",      name:"Initial jobless claims (wkly)",      invert:true  }, // claims down = good ⇒ invert=false? We treat lower claims as lower risk so invert=true
+  {id:"PCEPI",     name:"PCE prices",                         invert:false},
+  {id:"INDPRO",    name:"Industrial production",              invert:false},
+  {id:"RSAFS",     name:"Retail sales (advance)",             invert:false},
+  {id:"SP500",     name:"S&P 500 index",                      invert:false}, // high level ⇒ higher drawdown risk (choose non-invert)
+  {id:"VIXCLS",    name:"VIX index",                          invert:false},
+  {id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS",                 invert:false},
+  {id:"STLFSI4",   name:"St. Louis Financial Stress (v4)",    invert:false},
+  {id:"DTWEXBGS",  name:"Trade-weighted USD (broad)",         invert:false},
+  {id:"UMCSENT",   name:"UMich consumer sentiment",           invert:true  }, // lower sentiment = higher risk
+  {id:"UNRATE",    name:"Unemployment rate",                  invert:false},
 ];
 
-const FULL_EXTRA = [
-  {id:"PAYEMS",name:"Nonfarm payrolls"},
-  {id:"M2SL",name:"M2 money stock"},
-  {id:"HOUST5F",name:"5+ unit starts"},
-  {id:"HOUSTMW",name:"Midwest starts"}
-];
+// a smaller, ultra-reliable subset (for “Core”)
+const SERIES_CORE = [
+  "DGS10","T10Y2Y","T10Y3M","NFCI","BAMLH0A0HYM2","STLFSI4",
+  "SP500","VIXCLS","UNRATE","UMCSENT","CPIAUCSL","INDPRO"
+].map(x => SERIES_FULL.find(s=>s.id===x));
 
-const PROXIES = [
-  (u)=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  (u)=>`https://thingproxy.freeboard.io/fetch/${u}`,
-  (u)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u)=>`https://cors.isomorphic-git.org/${u}`
-];
-
-const CONCURRENCY = 8;
-const TEN_YEARS = 3650;
-
-function log(s){const el=document.getElementById('log'); el.textContent+=s+"\\n";}
-function pct(v,arr){arr=arr.slice().sort((a,b)=>a-b); let i=arr.findIndex(x=>v<=x); if(i===-1)i=arr.length-1; if(i<0)i=0; return Math.round((i/(arr.length-1||1))*100);}
-function color(n){return n<40?'g':n<70?'a':'r';}
-function dedupe(arr){const s=new Set();return arr.filter(x=>!s.has(x.id)&&s.add(x.id));}
-
-async function fetchFRED(key, id){
+/* ========= FRED fetch with proxy race (fast & resilient) ========= */
+const FRED = (id, key) => {
   const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json`;
-  const url = base; // raw endpoint
-  // race proxies for CORS
-  const reqs = PROXIES.map(p=>fetch(p(url)).then(r=>r.ok?r.json():Promise.reject()));
-  try{
-    const j = await Promise.any(reqs);
-    const obs = (j.observations||[]).filter(o=>o.value!=="."&&o.value!=="").map(o=>({d:o.date,v:+o.value}));
-    return obs;
-  }catch(e){ log(`✖ ${id} failed`); return null; }
+  const urls = [
+    base,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`,
+    `https://thingproxy.freeboard.io/fetch/${base}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(base)}`,
+    `https://cors.isomorphic-git.org/${base}`,
+  ];
+  return firstOk(urls, {timeout:9000}).then(r=>r.json());
+};
+
+function fetchWithTimeout(url,{timeout=9000}={}){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(),timeout);
+  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(t));
+}
+function firstOk(urls,opt){
+  return new Promise((resolve,reject)=>{
+    let pending = urls.length, firstErr=null, settled=false;
+    urls.forEach(u=>{
+      fetchWithTimeout(u,opt).then(r=>{
+        if (settled) return;
+        if (r.ok){ settled=true; resolve(r); }
+        else { if(!firstErr) firstErr = new Error(`HTTP ${r.status}`); if(--pending===0) reject(firstErr); }
+      }).catch(e=>{ if(!firstErr) firstErr=e; if(--pending===0) reject(firstErr); });
+    });
+  });
 }
 
-async function withPool(items, fn, size){
-  const out=[]; let i=0; const run=async()=>{
-    while(i<items.length){const k=i++; out[k]=await fn(items[k]);}
-  };
-  await Promise.all(Array(Math.min(size,items.length)).fill(0).map(run));
-  return out;
+/* ========= Percentile vs last ~10y window ========= */
+function windowLast10Y(observations){
+  // observations sorted asc by date; filter last 10y from latest date
+  const valid = observations.filter(o=>o.value && o.value!==".");
+  if (!valid.length) return [];
+  const lastDate = new Date(valid[valid.length-1].date);
+  const cutoff = new Date(lastDate); cutoff.setFullYear(cutoff.getFullYear()-10);
+  return valid.filter(o=>new Date(o.date)>=cutoff).map(o=>parseVal(o.value)).filter(v=>Number.isFinite(v));
 }
+function percentileRank(sample, x){
+  if (!sample.length || !Number.isFinite(x)) return NaN;
+  const sorted = sample.slice().sort((a,b)=>a-b);
+  let idx = 0;
+  while (idx<sorted.length && sorted[idx] <= x) idx++;
+  return Math.round(100 * idx / sorted.length); // 0..100
+}
+
+/* ========= UI ========= */
+const cards = $("#cards");
+const crcEl = $("#crc");
+const presetEl = $("#preset");
+const keyEl = $("#key");
+const runBtn = $("#run");
+
+keyEl.value = localStorage.getItem("fred_api_key") || "";
+
+runBtn.addEventListener("click", run);
+presetEl.addEventListener("change", ()=> run());
 
 async function run(){
-  const key=document.getElementById('key').value.trim();
-  const set=document.getElementById('set').value;
-  if(!key){alert('Paste your FRED API key');return;}
-  document.getElementById('crc').textContent='CRC: Loading…';
-  document.getElementById('grid').innerHTML='';
-  document.getElementById('log').textContent='';
+  clearLog();
+  const key = keyEl.value.trim();
+  localStorage.setItem("fred_api_key", key);
 
-  let list = set==='full' ? dedupe(CORE.concat(FULL_EXTRA)) : CORE.slice();
-  log(`Fetching ${list.length} indicators (concurrency ${CONCURRENCY})`);
+  if (key.length !== 32){
+    crcEl.className = "badge red";
+    crcEl.textContent = "CRC: error — missing/invalid API key";
+    log("Invalid key length; expected 32 chars.");
+    return;
+  }
 
-  const now = new Date();
-  const tenYrsAgo = new Date(now - TEN_YEARS*24*3600*1000);
+  const set = presetEl.value === "core" ? SERIES_CORE : SERIES_FULL;
+  crcEl.className = "badge amber";
+  crcEl.textContent = "CRC: Loading…";
 
-  const results = await withPool(list, async s=>{
-    log(`Fetching ${s.id} — ${s.name}`);
-    const obs = await fetchFRED(key, s.id);
-    if(!obs || !obs.length) return {...s, ok:false};
-    const recent = obs.filter(o=>new Date(o.d)>=tenYrsAgo).map(o=>o.v);
-    const latest = obs[obs.length-1];
-    const baseArr = recent.length?recent:obs.map(o=>o.v);
-    let score = pct(latest.v, baseArr);
-    if(s.invert) score = 100 - score;
-    return {...s, ok:true, latest, score};
-  }, CONCURRENCY);
+  cards.innerHTML = ""; // reset cards
+  const start = Date.now();
+  log(`Fetching ${set.length} indicators (parallel, race proxies)…`);
 
-  const valid = results.filter(r=>r&&r.ok&&Number.isFinite(r.score));
-  const crc = valid.length ? Math.round(valid.reduce((a,b)=>a+b.score,0)/valid.length) : null;
+  // Build card shells first for perceived speed
+  for (const s of set){
+    const div = document.createElement("div");
+    div.className = "card";
+    div.id = `card-${s.id}`;
+    div.innerHTML = `
+      <h3>${s.name} <a class="id" href="https://fred.stlouisfed.org/series/${s.id}" target="_blank" rel="noreferrer">${s.id}</a></h3>
+      <div class="val">—</div>
+      <div class="meta">—</div>
+      <div class="score">score —</div>`;
+    cards.appendChild(div);
+  }
 
-  const crcEl=document.getElementById('crc');
-  if(crc==null){crcEl.className='crc r';crcEl.textContent='CRC: Error (no data)';}
-  else {crcEl.className='crc '+color(crc); crcEl.textContent=`CRC: ${crc} — ${crc<40?'GREEN':crc<70?'AMBER':'RED'}`;}
+  // Fetch in chunks for stability (concurrency 8)
+  const chunk = 8;
+  let results = [];
+  for (let i=0;i<set.length;i+=chunk){
+    const slice = set.slice(i,i+chunk);
+    const batch = await Promise.allSettled(slice.map(s=>FRED(s.id, key).then(j=>({s,j}))));
+    results.push(...batch);
+  }
 
-  const grid=document.getElementById('grid');
-  valid.sort((a,b)=>a.name.localeCompare(b.name)).forEach(r=>{
-    const val=r.latest.v.toLocaleString(undefined,{maximumFractionDigits:6});
-    grid.insertAdjacentHTML('beforeend',`
-      <div class="card">
-        <div class="id">${r.name} <span style="opacity:.6">(${r.id})</span></div>
-        <div class="val">${val}</div>
-        <div class="date">${r.latest.d} • score ${r.score}</div>
-      </div>
-    `);
-  });
+  let scores = [];
+  for (const r of results){
+    if (r.status !== "fulfilled"){ log("× load failed"); continue; }
+    const {s,j} = r.value;
+    const series = j && j.observations ? j.observations : [];
+    const win = windowLast10Y(series);
+    const latest = (function(){
+      for (let i=series.length-1;i>=0;i--){
+        const v = parseVal(series[i].value);
+        if (Number.isFinite(v)) return {v, d: series[i].date};
+      }
+      return {v:NaN,d:"—"};
+    })();
 
-  // tail log
-  valid.forEach(r=>log(`✔ ${r.id}`));
-  log('Done.');
+    const pr = percentileRank(win, latest.v); // 0..100
+    const risk = s.invert ? (Number.isNaN(pr)?NaN:(100-pr)) : pr;
+
+    // card update
+    const el = $(`#card-${s.id}`);
+    if (el){
+      el.querySelector(".val").textContent = isNaN(latest.v)? "—" : fmtNum(latest.v);
+      el.querySelector(".meta").textContent = latest.d && !isNaN(pr)
+        ? `${latest.d} • score ${risk}`
+        : (latest.d ? `${latest.d} • score —` : "—");
+      el.querySelector(".score").textContent = Number.isNaN(risk) ? "score —" : `score ${risk}`;
+    }
+
+    if (!Number.isNaN(risk)) scores.push(risk);
+    log(`✓ ${s.id} via proxy OK`);
+  }
+
+  const took = ((Date.now()-start)/1000).toFixed(1);
+  log(`Done in ${took}s.`);
+
+  const crc = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : NaN;
+  const tone = Number.isNaN(crc) ? "red" : colorFor(crc);
+  crcEl.className = `badge ${tone}`;
+  crcEl.textContent = Number.isNaN(crc) ? "CRC: error (no data)" : `CRC: ${crc} — ${tone.toUpperCase()}`;
 }
+
+// auto-run once if a key is already saved
+if (keyEl.value.trim().length===32){ run(); }
 </script>
 </body>
 </html>
