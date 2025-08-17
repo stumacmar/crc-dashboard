@@ -2,106 +2,64 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>CRC — Debug Build</title>
+<title>FRED Fetch Smoke Test</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body{margin:0;font-family:system-ui,Arial;background:#0b1020;color:#e8eefb;text-align:center;padding:20px}
-  header{padding:10px 0;border-bottom:1px solid #22283f}
-  .btn{padding:8px 14px;border-radius:6px;border:1px solid #2a3560;background:#1d2750;color:#fff;margin:10px;cursor:pointer}
-  .crc-box{display:inline-block;padding:18px 36px;border-radius:12px;font-size:22px;font-weight:700;margin:20px}
-  .loading{background:#444;color:#ff0}
-  .green{background:#006400;color:#fff}
-  .amber{background:#ff8c00;color:#fff}
-  .red{background:#8b0000;color:#fff}
-  #log{margin-top:20px;text-align:left;max-width:600px;margin-left:auto;margin-right:auto;background:#131a33;padding:12px;border-radius:8px;font-size:14px}
+  body{margin:0;background:#0b1020;color:#e8eefb;font:14px/1.5 system-ui,Arial;padding:20px}
+  h1{margin:0 0 10px}
+  .card{background:#131a33;border:1px solid #1d2442;border-radius:10px;padding:14px;max-width:800px}
+  .ok{color:#2dd4bf}.bad{color:#fb7185}.muted{color:#9fb0d8}
+  pre{white-space:pre-wrap;word-break:break-word;background:#0d1531;padding:10px;border-radius:8px;overflow:auto}
 </style>
 </head>
 <body>
-<header>
-  <h1>Crash RAG Composite — Debug</h1>
-</header>
-
-<button id="go" class="btn">Run / Refresh</button>
-<div id="crc" class="crc-box loading">CRC: Waiting…</div>
-
-<div id="log"></div>
+<h1>FRED Fetch Smoke Test</h1>
+<div class="card">
+  <div>Testing endpoint:</div>
+  <div class="muted" id="url"></div>
+  <div id="status" style="margin-top:8px"></div>
+  <div id="latest" style="margin-top:8px;font-weight:600"></div>
+  <details style="margin-top:10px">
+    <summary>Response (first 800 chars)</summary>
+    <pre id="snippet"></pre>
+  </details>
+</div>
 
 <script>
-const API_KEY = "b78d7171c0fc257622597099f88fa7f7";  // hardcoded FRED API key
-const seriesIds = [
-  "UNRATE",     // Unemployment rate
-  "CPIAUCSL",   // CPI
-  "SP500",      // S&P 500 index
-  "T10Y2Y"      // 10Y-2Y Treasury spread
-];
+const API_KEY = "b78d7171c0fc257622597099f88fa7f7"; // your key
+const SERIES = "UNRATE"; // unemployment rate
+const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${SERIES}&api_key=${API_KEY}&file_type=json`;
 
-function log(msg) {
-  const el = document.getElementById("log");
-  el.innerHTML += msg + "<br>";
-  el.scrollTop = el.scrollHeight;
-}
+document.getElementById('url').textContent = url;
 
-async function fetchSeries(seriesId) {
-  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${API_KEY}&file_type=json`;
+(async () => {
+  const $ = id => document.getElementById(id);
   try {
-    log("Fetching " + seriesId + " …");
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: "no-store" });
+    $('status').textContent = `HTTP status: ${res.status}`;
+    const text = await res.text();
+    $('snippet').textContent = text.slice(0, 800);
+
     if (!res.ok) {
-      log("❌ HTTP error " + res.status);
-      return null;
+      $('status').className = 'bad';
+      $('latest').textContent = 'Fetch failed — see response above.';
+      return;
     }
-    const data = await res.json();
-    if (data && data.observations) {
-      let lastObs = data.observations[data.observations.length - 1];
-      let val = parseFloat(lastObs.value);
-      if (isNaN(val)) { log("⚠️ " + seriesId + " no numeric value"); return null; }
-      log("✅ " + seriesId + " latest = " + val);
-      return val;
-    } else {
-      log("⚠️ " + seriesId + " returned no observations");
+    const json = JSON.parse(text);
+    const obs = json.observations || [];
+    const last = obs[obs.length - 1];
+    if (!last || last.value === ".") {
+      $('latest').textContent = 'No latest numeric value.';
+      $('status').className = 'bad';
+      return;
     }
+    $('latest').innerHTML = `Latest ${SERIES}: <span class="ok">${parseFloat(last.value)}</span> on ${last.date}`;
+    $('status').className = 'ok';
   } catch (e) {
-    log("❌ " + seriesId + " error: " + e.message);
+    $('status').textContent = 'Error: ' + e.message;
+    $('status').className = 'bad';
   }
-  return null;
-}
-
-async function runCRC() {
-  const crcBox = document.getElementById("crc");
-  crcBox.textContent = "CRC: Loading…";
-  crcBox.className = "crc-box loading";
-  document.getElementById("log").innerHTML = "";
-
-  let values = [];
-  for (let id of seriesIds) {
-    let v = await fetchSeries(id);
-    if (v !== null) values.push(v);
-  }
-
-  if (values.length === 0) {
-    crcBox.textContent = "CRC: Error (no data)";
-    crcBox.className = "crc-box red";
-    log("❌ No data available — check API key or FRED server");
-    return;
-  }
-
-  // very naive composite: average of values
-  let score = values.reduce((a,b)=>a+b,0)/values.length;
-  log("Composite score = " + score.toFixed(2));
-
-  if (score < 50) {
-    crcBox.textContent = "CRC: GREEN";
-    crcBox.className = "crc-box green";
-  } else if (score < 150) {
-    crcBox.textContent = "CRC: AMBER";
-    crcBox.className = "crc-box amber";
-  } else {
-    crcBox.textContent = "CRC: RED";
-    crcBox.className = "crc-box red";
-  }
-}
-
-document.getElementById("go").addEventListener("click", runCRC);
+})();
 </script>
 </body>
 </html>
