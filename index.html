@@ -1,134 +1,309 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>The Marshall Stock Market Crash Composite Indicator</title>
-<meta name="theme-color" content="#0b1220">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0b1220; --card:#121a2a; --line:#1f2b44; --muted:#9fb0c8; --text:#eef4ff;
-    --chip:#24324a; --chip-text:#cfe0ff; --accent:#66a3ff; --shadow:rgba(0,0,0,.35);
-    --g:#16a34a; --a:#f59e0b; --r:#ef4444;
+    --bg:#0f172a;        /* slate-900 */
+    --panel:#111827;     /* gray-900 */
+    --soft:#0b1226;      /* deeper bg */
+    --card:#111827;
+    --text:#e5e7eb;      /* gray-200 */
+    --muted:#9ca3af;     /* gray-400 */
+    --accent:#60a5fa;    /* blue-400 */
+    --green:#10b981;     /* emerald-500 */
+    --amber:#f59e0b;     /* amber-500 */
+    --red:#ef4444;       /* red-500 */
+    --chip:#1f2937;      /* gray-800 */
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --radius: 16px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial}
-  .wrap{max-width:720px;margin:0 auto;padding:24px clamp(16px,4vw,24px) 40px}
-  header{display:flex;gap:14px;align-items:center;margin-bottom:12px}
-  header img{width:60px;height:60px;border-radius:12px;border:1px solid var(--line);object-fit:cover;background:#0e172a}
-  h1{font-size:clamp(22px,5vw,34px);line-height:1.1;margin:0}
-  .sub{color:var(--muted);margin-top:2px}
-  .controls{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,rgba(11,18,32,.97),rgba(11,18,32,.9) 80%,transparent);backdrop-filter:blur(6px);padding:8px 0 12px;margin:2px 0 12px}
-  .row{display:flex;gap:10px;align-items:center}
-  input[type=text]{flex:1;background:#0e172a;border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 14px;font-size:15px}
-  select,button{border:1px solid var(--line);border-radius:12px;background:#0e172a;color:var(--text)}
-  select{padding:10px 12px}
-  button{padding:12px 16px;background:linear-gradient(180deg,#3b82f6,#2563eb);border:none;font-weight:700}
-  .saved{font-size:12px;color:#88d38a;background:#11321e;border:1px solid #215c35;padding:5px 8px;border-radius:999px}
-  /* CRC donut */
-  .gauge{display:flex;align-items:center;gap:14px;margin:10px 0 16px}
-  .gauge svg{width:86px;height:86px;filter:drop-shadow(0 6px 14px var(--shadow))}
-  .gauge .label{font-size:clamp(18px,4.5vw,24px);font-weight:800}
-  .gauge .tag{display:inline-block;font-weight:800;padding:6px 10px;border-radius:10px;margin-left:8px}
-  .tag.g{background:linear-gradient(180deg,#16a34a,#0f7a36)} .tag.a{background:linear-gradient(180deg,#f59e0b,#d97706)} .tag.r{background:linear-gradient(180deg,#ef4444,#dc2626)}
-  /* RAG key */
-  .key{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px}
-  .key h3{margin:0 0 8px}
-  .legend{display:grid;grid-template-columns:108px 1fr;gap:8px 10px}
-  .dot{width:12px;height:12px;border-radius:999px;display:inline-block;margin-right:8px;position:relative;top:1px}
-  /* Cards */
-  .cards{display:grid;grid-template-columns:1fr;gap:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;box-shadow:0 10px 22px -18px var(--shadow)}
-  .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .name{font-weight:700}
-  .chip{background:var(--chip);color:var(--chip-text);padding:4px 8px;border-radius:999px;font-size:12px}
-  .score{font-size:12px;padding:5px 8px;border-radius:999px;font-weight:800}
-  .score.g{background:#103524} .score.a{background:#3a2a10} .score.r{background:#3a1313}
-  .val{font-size:36px;font-weight:900;letter-spacing:.25px;margin:6px 0 2px}
-  .meta{color:var(--muted);font-size:13px}
-  .bar{height:8px;border-radius:999px;background:#0e172a;border:1px solid var(--line);overflow:hidden;margin-top:10px}
-  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--g),#c3b50a,var(--r));width:0%}
-  .spark{margin-top:10px}
-  .muted{color:var(--muted)}
-  details{margin-top:12px}
-  summary{cursor:pointer}
+  body{
+    margin:0; background:radial-gradient(1200px 800px at 80% -200px, #14203b 0%, var(--bg) 50%) fixed;
+    color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.4;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+  header{display:flex;gap:16px;align-items:center;margin:6px 0 18px}
+  header img{width:56px;height:56px;border-radius:50%;object-fit:cover;box-shadow:var(--shadow)}
+  h1{font-size:28px;line-height:1.15;margin:0}
+  p.sub{margin:6px 0 0;color:var(--muted)}
+  .bar{display:flex;gap:10px;align-items:center;margin:16px 0 10px; flex-wrap:wrap}
+  input#key{
+    flex:1 1 260px;background:#0b1226;border:1px solid #1e293b;color:var(--text);
+    padding:12px 14px;border-radius:12px;min-width:260px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  select#preset{background:#0b1226;color:var(--text);border:1px solid #1e293b;padding:10px 12px;border-radius:12px}
+  button#run{
+    background:linear-gradient(180deg,#4f8efc,#2563eb); color:white;border:none;
+    padding:12px 16px;border-radius:12px;font-weight:700; box-shadow:var(--shadow);
+  }
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+  .summary{display:flex;align-items:center;gap:14px;background:var(--soft);border:1px solid #1f2937;padding:14px;border-radius:var(--radius)}
+  .gauge{width:86px;height:86px;border-radius:50%;position:relative;background:conic-gradient(var(--gcol) var(--gstop), #162033 0);}
+  .gauge:after{content:attr(data-val);position:absolute;inset:0;display:grid;place-items:center;font-weight:800}
+  .badge{background:var(--chip);padding:6px 10px;border-radius:999px;font-weight:800;min-width:72px;text-align:center}
+  .badge.green{background:rgba(16,185,129,.15);color:var(--green)}
+  .badge.amber{background:rgba(245,158,11,.15);color:var(--amber)}
+  .badge.red{background:rgba(239,68,68,.15);color:var(--red)}
+  .note{background:var(--soft);border:1px solid #1f2937;padding:16px;border-radius:var(--radius)}
+  .k{display:flex;gap:10px;align-items:center;margin:6px 0;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .card{
+    background:var(--card);border:1px solid #1f2937;border-radius:18px;padding:14px 16px;
+    display:flex;justify-content:space-between;gap:10px;box-shadow:var(--shadow)
+  }
+  .left{min-width:0}
+  .title{font-weight:800}
+  .id{background:#1f2937;color:#cbd5e1;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+  .val{font-size:28px;font-weight:800;margin-top:6px}
+  .meta{color:var(--muted);font-size:13px;margin-top:2px}
+  .score{font-weight:800}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  details.debug{margin-top:16px}
+  .log{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0b1226;border:1px solid #1f2937;padding:14px;border-radius:12px;color:#cbd5e1}
+  @media(min-width:720px){
+    .grid{grid-template-columns:1fr 1fr}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <header>
+      <img src="logo.png" alt="Alba crest" onerror="this.style.display='none'">
+      <div>
+        <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+        <p class="sub">U.S. crash-risk dashboard from 20+ economic & market indicators.</p>
+      </div>
+    </header>
 
-  <!-- Header -->
-  <header>
-    <img src="logo-alba.png" alt="Alba logo" onerror="this.style.display='none'">
-    <div>
-      <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-      <div class="sub">U.S. crash-risk dashboard from 20+ economic & market indicators.</div>
-    </div>
-  </header>
-
-  <!-- Controls -->
-  <div class="controls">
-    <div class="row">
-      <input id="apiKey" type="text" placeholder="Paste your 32-char FRED API key (saved locally)">
-      <select id="proxySel">
-        <option value="auto">Auto (race)</option>
+    <div class="bar">
+      <input id="key" placeholder="Enter your FRED API key (32 chars)" inputmode="latin" autocomplete="off">
+      <select id="preset" title="Proxy">
+        <option value="auto" selected>Auto (race)</option>
+        <option value="codetabs">Codetabs</option>
         <option value="allorigins">AllOrigins</option>
-        <option value="codetabs">CodeTabs</option>
-        <option value="freeboard">Freeboard</option>
+        <option value="isogit">isomorphic-git CORS</option>
+        <option value="thingproxy">ThingProxy</option>
+        <option value="direct">Direct FRED</option>
       </select>
-      <button id="runBtn">Run / Refresh</button>
-      <span id="saved" class="saved" style="display:none">Saved ✓</span>
+      <button id="run">Run / Refresh</button>
     </div>
-  </div>
 
-  <!-- CRC donut -->
-  <div class="gauge">
-    <svg viewBox="0 0 120 120" aria-label="CRC gauge">
-      <defs>
-        <linearGradient id="grad" x1="0%" x2="100%">
-          <stop offset="0%" stop-color="#16a34a"/>
-          <stop offset="50%" stop-color="#f59e0b"/>
-          <stop offset="100%" stop-color="#ef4444"/>
-        </linearGradient>
-      </defs>
-      <circle cx="60" cy="60" r="48" fill="none" stroke="#0e172a" stroke-width="14"/>
-      <circle id="arc" cx="60" cy="60" r="48" fill="none" stroke="url(#grad)" stroke-width="14"
-              stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="0 999"/>
-      <text id="crcNum" x="60" y="65" text-anchor="middle" font-size="26" font-weight="900" fill="#eef4ff">—</text>
-    </svg>
-    <div class="label">CRC <span id="crcTag" class="tag a">—</span></div>
-  </div>
-
-  <!-- RAG key -->
-  <div class="key">
-    <h3>How to read the CRC</h3>
-    <div class="legend">
-      <div><span class="dot" style="background:var(--g)"></span><b>Green &lt; 40</b></div>
-      <div>Indicators mostly sit in the lower half of their last-10y ranges.</div>
-      <div><span class="dot" style="background:var(--a)"></span><b>Amber 40–70</b></div>
-      <div>Mixed/deteriorating signals. Typical responses: tighten risk controls; add selective hedges.</div>
-      <div><span class="dot" style="background:var(--r)"></span><b>Red &gt; 70</b></div>
-      <div>Broad elevation vs last decade. Focus often shifts to preservation/liquidity.</div>
+    <div class="summary">
+      <div class="gauge" id="gauge" style="--gcol:#f59e0b;--gstop:0deg" data-val="—"></div>
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="opacity:.8;font-weight:700">CRC</span>
+          <span id="badge" class="badge amber">—</span>
+        </div>
+        <div style="color:var(--muted);margin-top:4px">Composite = average of indicator percentiles vs last 10y (invert where higher value = higher risk).</div>
+      </div>
     </div>
+
+    <div class="note">
+      <h3 style="margin:0 0 8px">How to read the CRC (RAG)</h3>
+      <div class="k"><span class="dot" style="background:var(--green)"></span><strong>&nbsp;Green &lt; 40</strong>&nbsp;• Most indicators are in the lower half of their 10-year ranges.</div>
+      <div class="k"><span class="dot" style="background:var(--amber)"></span><strong>&nbsp;Amber 40–70</strong>&nbsp;• Mixed/deteriorating signals. Tighten risk controls; consider selective hedges.</div>
+      <div class="k"><span class="dot" style="background:var(--red)"></span><strong>&nbsp;Red &gt; 70</strong>&nbsp;• Broad elevation vs the last decade; emphasize capital preservation and liquidity.</div>
+    </div>
+
+    <div id="cards" class="grid"></div>
+
+    <details class="debug">
+      <summary>Show Debug Log</summary>
+      <div id="log" class="log"></div>
+    </details>
   </div>
-
-  <!-- Cards -->
-  <div id="cards" class="cards"></div>
-
-  <details>
-    <summary class="muted">Debug log</summary>
-    <pre id="log" class="muted"></pre>
-  </details>
-
-</div>
 
 <script>
-/* ---------------- config (curated set, mobile-first) ---------------- */
+/* ---------------------------- Config ---------------------------------- */
 const SERIES = [
-  { id:"DGS10",       name:"10Y Treasury yield",             invert:false, decimals:2, unit:"%" },
-  { id:"T10Y2Y",      name:"10Y–2Y spread",                  invert:true,  decimals:2, unit:"%" },
-  { id:"T10Y3M",      name:"10Y–3M spread",                  invert:true,  decimals:2, unit:"%" },
-  { id:"BAMLH0A0HYM2",name:"ICE BofA HY OAS",                invert:false, decimals:2, unit:"%" },
-  { id:"STLFSI4",     name:"St. Louis Financial Stress (v4)",invert:false, decimals:4 },
-  { id:"SP500",       name:"S
+  { id:'DGS10',     name:'10Y Treasury yield',          fmt:v=>(+v).toFixed(2)+'%',       invert:false },
+  { id:'T10Y2Y',    name:'10Y–2Y spread',               fmt:v=>(+v).toFixed(2)+'%',       invert:true  },
+  { id:'T10Y3M',    name:'10Y–3M spread',               fmt:v=>(+v).toFixed(2)+'%',       invert:true  },
+  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',           fmt:v=>(+v).toFixed(2),           invert:true  },
+  { id:'STLFSI4',   name:'St. Louis Financial Stress',  fmt:v=>(+v).toFixed(4),           invert:true  },
+  { id:'SP500',     name:'S&P 500 index',               fmt:v=>(+v).toLocaleString(),     invert:false },
+  { id:'VIXCLS',    name:'VIX index',                   fmt:v=>(+v).toFixed(2),           invert:true  },
+  { id:'UNRATE',    name:'Unemployment rate',           fmt:v=>(+v).toFixed(1)+'',        invert:true  },
+  { id:'UMCSENT',   name:'UMich consumer sentiment',    fmt:v=>(+v).toFixed(1),           invert:false },
+  { id:'CPIAUCSL',  name:'CPI (headline)',              fmt:v=>(+v).toFixed(3),           invert:true  },
+  { id:'INDPRO',    name:'Industrial production',       fmt:v=>(+v).toFixed(4),           invert:true  },
+  { id:'PCEPI',     name:'PCE prices',                  fmt:v=>(+v).toFixed(3),           invert:true  },
+  { id:'RSFSXMV',   name:'Retail sales excl. auto',     fmt:v=>(+v).toFixed(3),           invert:true  }, // alt to RSAFS
+  { id:'PERMIT',    name:'Building permits',            fmt:v=>(+v).toLocaleString(),     invert:true  },
+  { id:'HOUST',     name:'Housing starts',              fmt:v=>(+v).toLocaleString(),     invert:true  },
+  { id:'DTWEXBGS',  name:'Trade-weighted USD (broad)',  fmt:v=>(+v).toFixed(4),           invert:true  },
+  { id:'NFCI',      name:'Chicago Fed Fin. Conditions', fmt:v=>(+v).toFixed(5),           invert:true  },
+];
+
+const ONE_DAY = 86400000;
+const TEN_YEARS_MS = 3652 * ONE_DAY; // ~10 years
+const CACHE_MS = 30 * 60 * 1000;
+
+/* ------------------------ UI helpers ---------------------------------- */
+const el = sel => document.querySelector(sel);
+const log = (...a)=>{ const L=el('#log'); L.textContent += a.join(' ')+'\n'; };
+
+function ragColor(score){
+  if (score < 40) return {cls:'green', col:'#10b981'};
+  if (score < 70) return {cls:'amber', col:'#f59e0b'};
+  return {cls:'red', col:'#ef4444'};
+}
+function setGauge(score){
+  const g = el('#gauge');
+  if (isNaN(score)){ g.style.setProperty('--gstop','0deg'); g.dataset.val='—'; return; }
+  const deg = Math.max(6, Math.min(354, (score/100)*360));
+  const {col, cls} = ragColor(score);
+  g.style.setProperty('--gcol', col);
+  g.style.setProperty('--gstop', deg+'deg');
+  g.dataset.val = Math.round(score);
+  const badge = el('#badge');
+  badge.className = 'badge '+cls;
+  badge.textContent = `CRC: ${Math.round(score)} — ${cls.toUpperCase()}`;
+}
+
+/* ----------------------- Fetch (proxy race) --------------------------- */
+function proxied(url, which){
+  const enc = encodeURIComponent(url);
+  const routes = {
+    codetabs:   `https://api.codetabs.com/v1/proxy?quest=${enc}`,
+    allorigins: `https://api.allorigins.win/raw?url=${enc}`,
+    isogit:     `https://cors.isomorphic-git.org/${url}`,
+    thingproxy: `https://thingproxy.freeboard.io/fetch/${url}`,
+    direct:      url
+  };
+  if (which && which!=='auto') return routes[which];
+  return [routes.codetabs, routes.allorigins, routes.isogit, routes.thingproxy, routes.direct];
+}
+
+async function fetchFred(series, apiKey, prefer){
+  const fred = `https://api.stlouisfed.org/fred/series/observations?series_id=${series}&file_type=json&api_key=${apiKey}`;
+  const tried = proxied(fred, prefer);
+  if (Array.isArray(tried)){
+    // race proxies: first success wins
+    const attempts = tried.map(u => fetch(u).then(r => r.ok ? r.json() : Promise.reject(r.status)).catch(e => ({__err:e,u})));
+    const results = await Promise.allSettled(attempts);
+    for (const r of results){
+      if (r.status==='fulfilled' && !r.value.__err){ r.value.__via='race'; return r.value; }
+    }
+    // if all failed, throw last error
+    const last = results[results.length-1];
+    throw new Error('All proxies failed: '+(last.value?.__err || last.reason));
+  }else{
+    const res = await fetch(tried);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json(); j.__via=prefer; return j;
+  }
+}
+
+/* -------------------- Percentile vs last 10y -------------------------- */
+function last10yPercentile(observations, invert=false){
+  const now = Date.now();
+  const windowStart = now - TEN_YEARS_MS;
+  const pts = observations
+    .map(o => ({ t: new Date(o.date+'T00:00:00Z').getTime(), v: parseFloat(o.value) }))
+    .filter(o => isFinite(o.v));
+  // latest
+  const latest = pts[pts.length-1];
+  if (!latest) return { latestValue:NaN, latestDate:'—', pct:NaN };
+  // window
+  const ref = pts.filter(p => p.t >= windowStart);
+  const refVals = ref.length ? ref : pts.slice(-120); // fallback ~10 years monthly
+  const values = refVals.map(p => p.v).sort((a,b)=>a-b);
+  const latestV = latest.v;
+  let pct = values.length ? (values.findIndex(v => v > latestV) / values.length) * 100 : NaN;
+  if (pct===-Infinity || pct===Infinity || isNaN(pct)) pct = NaN;
+  if (invert && isFinite(pct)) pct = 100 - pct;
+  return { latestValue: latestV, latestDate: new Date(latest.t).toISOString().slice(0,10), pct: Math.max(0, Math.min(100, pct)) };
+}
+
+/* ------------------------ Main runner --------------------------------- */
+async function run(){
+  const apiKey = el('#key').value.trim();
+  const prefer = el('#preset').value;
+  el('#log').textContent='';
+  if (!/^[a-f0-9]{32}$/.test(apiKey)){ alert('Enter a valid 32-char FRED API key'); return; }
+
+  localStorage.setItem('fred_key', apiKey);
+
+  const cards = el('#cards');
+  cards.innerHTML = '';
+  setGauge(NaN);
+
+  const cacheKey = `crc_${prefer}_${apiKey.slice(0,6)}`;
+  const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+  if (cached && (Date.now()-cached.ts) < CACHE_MS){
+    log('Loaded from cache');
+    paint(cached.payload);
+    return;
+  }
+
+  log(`Fetching ${SERIES.length} indicators (proxy: ${prefer})`);
+  const payload = [];
+  let done=0;
+
+  await Promise.all(SERIES.map(async s=>{
+    try{
+      const j = await fetchFred(s.id, apiKey, prefer);
+      const { latestValue, latestDate, pct } = last10yPercentile(j.observations, s.invert);
+      payload.push({ id:s.id, name:s.name, value:latestValue, date:latestDate, score: Math.round(pct), fmt:s.fmt, invert:s.invert });
+      log(`✓ ${s.id} ok`);
+    }catch(e){
+      payload.push({ id:s.id, name:s.name, error:String(e), score:null });
+      log(`✗ ${s.id} failed: ${e}`);
+    }finally{ done++; }
+  }));
+
+  localStorage.setItem(cacheKey, JSON.stringify({ts:Date.now(), payload}));
+  paint(payload);
+}
+
+function paint(list){
+  // compute CRC from available scores
+  const nums = list.map(d=>d.score).filter(n=>typeof n==='number' && isFinite(n));
+  const crc = nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : NaN;
+  setGauge(crc);
+
+  // sort by score desc for readability
+  list.sort((a,b)=> (b.score??-1) - (a.score??-1));
+
+  const cards = el('#cards');
+  cards.innerHTML = list.map(d=>{
+    const tag = `<span class="id">${d.id}</span>`;
+    if (d.error){
+      return `<div class="card"><div class="left"><div class="title">${d.name} ${tag}</div>
+              <div class="meta" style="color:#ef4444">error: ${escapeHtml(d.error)}</div></div>
+              <div class="chips"><span class="badge red">ERR</span></div></div>`;
+    }
+    const fmt = d.fmt ? d.fmt(d.value) : String(d.value);
+    const {cls} = ragColor(d.score ?? 0);
+    return `<div class="card">
+      <div class="left">
+        <div class="title">${d.name} ${tag}</div>
+        <div class="val">${fmt}</div>
+        <div class="meta">${d.date ? d.date : '—'} &nbsp; • &nbsp; score <span class="score">${d.score}</span></div>
+      </div>
+      <div class="chips"><span class="badge ${cls}">${d.score ?? '—'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* --------------------- Wire up UI & defaults -------------------------- */
+el('#run').addEventListener('click', run);
+el('#preset').addEventListener('change', ()=>{ localStorage.setItem('proxy_pref', el('#preset').value); });
+(function boot(){
+  const saved = localStorage.getItem('fred_key'); if (saved) el('#key').value=saved;
+  const pref = localStorage.getItem('proxy_pref'); if (pref) el('#preset').value=pref;
+})();
+</script>
+</body>
+</html>
