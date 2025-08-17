@@ -3,58 +3,54 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>The Marshall Stock Market Crash Composite Indicator</title>
+<title>Crash RAG Composite — United States (Turbo)</title>
 <style>
-  /* ======= DIGITAL DESIGN THEME ======= */
   :root{
-    --bg:#0a0f1e;
-    --panel:#0f1630;
-    --panel2:#0e1533;
-    --border:#1a2346;
-    --ink:#e9f0ff;
-    --muted:#a6b2d6;
-    --accent:#6ea8ff;
-    --ok:#0bbf6a;
-    --warn:#f2a93b;
-    --bad:#e55353;
+    --bg:#0a0f1e;--panel:#0f1630;--panel2:#0e1533;--border:#1a2346;
+    --ink:#e9f0ff;--muted:#a6b2d6;--accent:#6ea8ff;
+    --ok:#0bbf6a;--warn:#f2a93b;--bad:#e55353;
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family: Inter,system-ui,sans-serif}
-  header{padding:22px 14px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:5}
-  .wrap{max-width:1200px;margin:0 auto;padding:20px 14px}
-  h1{margin:0;font-size:26px}
-  .sub{color:var(--muted);font-size:14px;margin-top:6px}
-  .controls{display:flex;gap:12px;align-items:center;margin-top:14px}
-  input,select,button{border:1px solid var(--border);background:var(--panel2);color:var(--ink);border-radius:10px}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+  header{padding:22px 14px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px 14px}
+  h1{margin:0 0 6px 0;font-size:26px}.sub{color:var(--muted);font-size:14px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+  input,button,select{border:1px solid var(--border);background:var(--panel2);color:var(--ink);border-radius:10px}
   input{padding:10px;min-width:300px}
-  .btn{padding:10px 14px;cursor:pointer;font-weight:600;border:none}
-  .btn-primary{background:linear-gradient(135deg, #486bff, #2bd6ff);color:#fff}
-  .crc-box{margin:20px 0;padding:18px;border-radius:12px;font-weight:700;font-size:20px;text-align:center}
-  .crc-green{background:var(--ok)} .crc-amber{background:var(--warn)} .crc-red{background:var(--bad)}
-  /* Grid for indicators */
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
-  .card{background:var(--panel);padding:14px;border-radius:12px;border:1px solid var(--border)}
-  .id{color:var(--accent);font-weight:600;font-size:14px}
-  .val{font-size:20px;font-weight:700;margin-top:6px}
-  .date{color:var(--muted);font-size:13px}
-  /* Collapsible log */
-  details{margin-top:20px;background:var(--panel2);padding:10px;border-radius:8px}
-  summary{cursor:pointer;font-weight:600;color:var(--accent)}
-  pre{font-size:12px;white-space:pre-wrap;color:var(--muted)}
+  .btn{padding:10px 14px;font-weight:700;cursor:pointer;border:none}
+  .btn-primary{background:linear-gradient(135deg,#486bff,#2bd6ff);color:#fff}
+  .crc{margin:6px 0 18px;border-radius:12px;padding:16px;text-align:center;font-weight:900;font-size:20px}
+  .g{background:var(--ok)}.a{background:var(--warn)}.r{background:var(--bad)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .id{color:var(--accent);font-weight:700;font-size:13px}
+  .val{font-size:20px;font-weight:800;margin-top:6px}
+  .date{color:var(--muted);font-size:12px}
+  details{margin-top:18px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:8px}
+  summary{cursor:pointer;color:var(--accent);font-weight:700}
+  pre{white-space:pre-wrap;font-size:12px;color:var(--muted);margin:8px 0 0}
 </style>
 </head>
 <body>
 <header>
-  <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-  <div class="sub">Live U.S. crash-risk dashboard — powered by 20+ economic & market indicators</div>
+  <div class="wrap">
+    <h1>Crash RAG Composite — United States (Turbo)</h1>
+    <div class="sub">Parallel fetch (fast & reliable). RAG = percentile vs last 10y (invert where needed).</div>
+  </div>
 </header>
 <div class="wrap">
   <div class="controls">
-    <input id="apiKey" placeholder="Enter your FRED API key" />
+    <input id="key" placeholder="Paste your FRED API key" />
+    <select id="set">
+      <option value="core">Core (fast, reliable)</option>
+      <option value="full">Full (+market breadth)</option>
+    </select>
     <button class="btn btn-primary" onclick="run()">Run / Refresh</button>
   </div>
-  <div id="crc" class="crc-box">CRC: Loading…</div>
+
+  <div id="crc" class="crc">CRC: Loading…</div>
   <div id="grid" class="grid"></div>
+
   <details>
     <summary>Show Debug Log</summary>
     <pre id="log"></pre>
@@ -62,71 +58,119 @@
 </div>
 
 <script>
-const series = [
-  {id:"UNRATE", name:"Unemployment rate", invert:1},
-  {id:"ICSA", name:"Initial jobless claims (wkly)", invert:1},
-  {id:"CPIAUCSL", name:"CPI (headline)", invert:1},
-  {id:"CPILFESL", name:"Core CPI", invert:1},
-  {id:"PCEPI", name:"PCE prices", invert:1},
-  {id:"INDPRO", name:"Industrial production"},
-  {id:"TCU", name:"Capacity utilization"},
-  {id:"RSAFS", name:"Retail sales (advance)"},
-  {id:"HOUST", name:"Housing starts"},
-  {id:"PERMIT", name:"Building permits"},
-  {id:"SP500", name:"S&P 500 index"},
-  {id:"VIXCLS", name:"VIX index", invert:1},
-  {id:"T10Y3M", name:"10Y–3M spread"},
-  {id:"T10Y2Y", name:"10Y–2Y spread"},
-  {id:"DGS10", name:"10Y Treasury yield"},
-  {id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS", invert:1},
-  {id:"STLFSI4", name:"St. Louis Financial Stress", invert:1},
-  {id:"NFCI", name:"Chicago Fed Fin. Conditions", invert:1},
-  {id:"UMCSENT", name:"UMich consumer sentiment"},
-  {id:"DTWEXBGS", name:"Trade-weighted USD (broad)"}
+const CORE = [
+  {id:"UNRATE",name:"Unemployment rate",invert:1},
+  {id:"ICSA",name:"Initial jobless claims (wkly)",invert:1},
+  {id:"CPIAUCSL",name:"CPI (headline)",invert:1},
+  {id:"CPILFESL",name:"Core CPI",invert:1},
+  {id:"PCEPI",name:"PCE prices",invert:1},
+  {id:"INDPRO",name:"Industrial production"},
+  {id:"TCU",name:"Capacity utilization"},
+  {id:"RSAFS",name:"Retail sales (advance)"},
+  {id:"HOUST",name:"Housing starts"},
+  {id:"PERMIT",name:"Building permits"},
+  {id:"SP500",name:"S&P 500 index"},
+  {id:"VIXCLS",name:"VIX index",invert:1},
+  {id:"T10Y3M",name:"10Y–3M spread"},
+  {id:"T10Y2Y",name:"10Y–2Y spread"},
+  {id:"DGS10",name:"10Y Treasury yield"},
+  {id:"BAMLH0A0HYM2",name:"ICE BofA HY OAS",invert:1},
+  {id:"STLFSI4",name:"St. Louis Financial Stress (v4)",invert:1},
+  {id:"NFCI",name:"Chicago Fed Fin. Conditions",invert:1},
+  {id:"UMCSENT",name:"UMich consumer sentiment"},
+  {id:"DTWEXBGS",name:"Trade-weighted USD (broad)"}
 ];
 
-function log(msg){document.getElementById("log").textContent+=msg+"\\n"}
+const FULL_EXTRA = [
+  {id:"PAYEMS",name:"Nonfarm payrolls"},
+  {id:"M2SL",name:"M2 money stock"},
+  {id:"HOUST5F",name:"5+ unit starts"},
+  {id:"HOUSTMW",name:"Midwest starts"}
+];
 
-async function fetchSeries(apiKey,id){
-  const url=`https://api.codetabs.com/v1/proxy?quest=https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${apiKey}&file_type=json`;
+const PROXIES = [
+  (u)=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  (u)=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  (u)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u)=>`https://cors.isomorphic-git.org/${u}`
+];
+
+const CONCURRENCY = 8;
+const TEN_YEARS = 3650;
+
+function log(s){const el=document.getElementById('log'); el.textContent+=s+"\\n";}
+function pct(v,arr){arr=arr.slice().sort((a,b)=>a-b); let i=arr.findIndex(x=>v<=x); if(i===-1)i=arr.length-1; if(i<0)i=0; return Math.round((i/(arr.length-1||1))*100);}
+function color(n){return n<40?'g':n<70?'a':'r';}
+function dedupe(arr){const s=new Set();return arr.filter(x=>!s.has(x.id)&&s.add(x.id));}
+
+async function fetchFRED(key, id){
+  const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json`;
+  const url = base; // raw endpoint
+  // race proxies for CORS
+  const reqs = PROXIES.map(p=>fetch(p(url)).then(r=>r.ok?r.json():Promise.reject()));
   try{
-    const r=await fetch(url);
-    const j=await r.json();
-    const obs=j.observations.filter(o=>o.value!=="." && o.value!=="").map(o=>({date:o.date,value:+o.value}));
-    return obs.length?obs[obs.length-1]:null;
-  }catch(e){log("❌ "+id+" failed");return null}
+    const j = await Promise.any(reqs);
+    const obs = (j.observations||[]).filter(o=>o.value!=="."&&o.value!=="").map(o=>({d:o.date,v:+o.value}));
+    return obs;
+  }catch(e){ log(`✖ ${id} failed`); return null; }
 }
 
-function colorize(score){
-  if(score<40)return "crc-green";
-  if(score<70)return "crc-amber";
-  return "crc-red";
+async function withPool(items, fn, size){
+  const out=[]; let i=0; const run=async()=>{
+    while(i<items.length){const k=i++; out[k]=await fn(items[k]);}
+  };
+  await Promise.all(Array(Math.min(size,items.length)).fill(0).map(run));
+  return out;
 }
 
 async function run(){
-  const apiKey=document.getElementById("apiKey").value.trim();
-  if(!apiKey){alert("Enter API key");return}
-  document.getElementById("crc").textContent="CRC: Loading…";
-  document.getElementById("grid").innerHTML="";
-  document.getElementById("log").textContent="";
+  const key=document.getElementById('key').value.trim();
+  const set=document.getElementById('set').value;
+  if(!key){alert('Paste your FRED API key');return;}
+  document.getElementById('crc').textContent='CRC: Loading…';
+  document.getElementById('grid').innerHTML='';
+  document.getElementById('log').textContent='';
 
-  let scores=[];
-  for(const s of series){
-    log("Fetching "+s.id+" — "+s.name);
-    const obs=await fetchSeries(apiKey,s.id);
-    if(!obs)continue;
-    const val=obs.value,date=obs.date;
-    scores.push(50); // placeholder scoring
-    document.getElementById("grid").innerHTML+=`
+  let list = set==='full' ? dedupe(CORE.concat(FULL_EXTRA)) : CORE.slice();
+  log(`Fetching ${list.length} indicators (concurrency ${CONCURRENCY})`);
+
+  const now = new Date();
+  const tenYrsAgo = new Date(now - TEN_YEARS*24*3600*1000);
+
+  const results = await withPool(list, async s=>{
+    log(`Fetching ${s.id} — ${s.name}`);
+    const obs = await fetchFRED(key, s.id);
+    if(!obs || !obs.length) return {...s, ok:false};
+    const recent = obs.filter(o=>new Date(o.d)>=tenYrsAgo).map(o=>o.v);
+    const latest = obs[obs.length-1];
+    const baseArr = recent.length?recent:obs.map(o=>o.v);
+    let score = pct(latest.v, baseArr);
+    if(s.invert) score = 100 - score;
+    return {...s, ok:true, latest, score};
+  }, CONCURRENCY);
+
+  const valid = results.filter(r=>r&&r.ok&&Number.isFinite(r.score));
+  const crc = valid.length ? Math.round(valid.reduce((a,b)=>a+b.score,0)/valid.length) : null;
+
+  const crcEl=document.getElementById('crc');
+  if(crc==null){crcEl.className='crc r';crcEl.textContent='CRC: Error (no data)';}
+  else {crcEl.className='crc '+color(crc); crcEl.textContent=`CRC: ${crc} — ${crc<40?'GREEN':crc<70?'AMBER':'RED'}`;}
+
+  const grid=document.getElementById('grid');
+  valid.sort((a,b)=>a.name.localeCompare(b.name)).forEach(r=>{
+    const val=r.latest.v.toLocaleString(undefined,{maximumFractionDigits:6});
+    grid.insertAdjacentHTML('beforeend',`
       <div class="card">
-        <div class="id">${s.name}</div>
+        <div class="id">${r.name} <span style="opacity:.6">(${r.id})</span></div>
         <div class="val">${val}</div>
-        <div class="date">${date}</div>
-      </div>`;
-  }
-  let avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-  document.getElementById("crc").textContent=`CRC: ${avg}`;
-  document.getElementById("crc").className="crc-box "+colorize(avg);
+        <div class="date">${r.latest.d} • score ${r.score}</div>
+      </div>
+    `);
+  });
+
+  // tail log
+  valid.forEach(r=>log(`✔ ${r.id}`));
+  log('Done.');
 }
 </script>
 </body>
