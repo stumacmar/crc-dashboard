@@ -2,174 +2,168 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>The Marshall Stock Market Crash Composite Indicator</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0f172a;        /* slate-900 */
-    --panel:#111827;     /* gray-900 */
-    --soft:#0b1226;      /* deeper bg */
-    --card:#111827;
-    --text:#e5e7eb;      /* gray-200 */
-    --muted:#9ca3af;     /* gray-400 */
-    --accent:#60a5fa;    /* blue-400 */
-    --green:#10b981;     /* emerald-500 */
-    --amber:#f59e0b;     /* amber-500 */
-    --red:#ef4444;       /* red-500 */
-    --chip:#1f2937;      /* gray-800 */
-    --shadow: 0 10px 30px rgba(0,0,0,.35);
-    --radius: 16px;
+    --bg:#0f172a; --panel:#0b1220; --soft:#0c1428;
+    --text:#e6ecf7; --muted:#9fb0c6; --line:#1f2b44;
+    --green:#10b981; --amber:#f59e0b; --red:#ef4444;
+    --chip:#1f2937; --chipText:#cbd5e1; --accent:#66a3ff;
+    --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box}
-  body{
-    margin:0; background:radial-gradient(1200px 800px at 80% -200px, #14203b 0%, var(--bg) 50%) fixed;
-    color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;
-    -webkit-font-smoothing:antialiased; line-height:1.4;
-  }
-  .wrap{max-width:980px;margin:0 auto;padding:24px 16px 60px}
-  header{display:flex;gap:16px;align-items:center;margin:6px 0 18px}
-  header img{width:56px;height:56px;border-radius:50%;object-fit:cover;box-shadow:var(--shadow)}
-  h1{font-size:28px;line-height:1.15;margin:0}
-  p.sub{margin:6px 0 0;color:var(--muted)}
-  .bar{display:flex;gap:10px;align-items:center;margin:16px 0 10px; flex-wrap:wrap}
-  input#key{
-    flex:1 1 260px;background:#0b1226;border:1px solid #1e293b;color:var(--text);
-    padding:12px 14px;border-radius:12px;min-width:260px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
-  }
-  select#preset{background:#0b1226;color:var(--text);border:1px solid #1e293b;padding:10px 12px;border-radius:12px}
-  button#run{
-    background:linear-gradient(180deg,#4f8efc,#2563eb); color:white;border:none;
-    padding:12px 16px;border-radius:12px;font-weight:700; box-shadow:var(--shadow);
-  }
-  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
-  .summary{display:flex;align-items:center;gap:14px;background:var(--soft);border:1px solid #1f2937;padding:14px;border-radius:var(--radius)}
-  .gauge{width:86px;height:86px;border-radius:50%;position:relative;background:conic-gradient(var(--gcol) var(--gstop), #162033 0);}
-  .gauge:after{content:attr(data-val);position:absolute;inset:0;display:grid;place-items:center;font-weight:800}
-  .badge{background:var(--chip);padding:6px 10px;border-radius:999px;font-weight:800;min-width:72px;text-align:center}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,Inter,Segoe UI,Roboto,Arial}
+  .wrap{max-width:980px;margin:0 auto;padding:22px 16px 60px}
+  header{display:flex;gap:14px;align-items:center;margin:6px 0 12px}
+  header img{width:56px;height:56px;border-radius:12px;border:1px solid var(--line);object-fit:cover;background:#0e172a}
+  h1{margin:0;font-size:clamp(22px,4.5vw,32px)}
+  .sub{color:var(--muted);margin-top:4px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}
+  input,select,button{border-radius:12px;border:1px solid var(--line)}
+  input{flex:1 1 280px;min-width:240px;background:#0e172a;color:var(--text);padding:12px 14px}
+  select{background:#0e172a;color:var(--text);padding:10px 12px}
+  button{background:linear-gradient(180deg,#4f8efc,#2563eb);color:#fff;border:none;padding:12px 16px;font-weight:700;box-shadow:var(--shadow)}
+  .summary{display:flex;gap:14px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  /* Perfect-circle gauge */
+  .gaugeBox{width:120px;aspect-ratio:1/1;border-radius:50%;display:grid;place-items:center}
+  .gauge{width:100%;height:100%}
+  .badge{display:inline-block;border-radius:999px;padding:6px 10px;font-weight:800}
   .badge.green{background:rgba(16,185,129,.15);color:var(--green)}
   .badge.amber{background:rgba(245,158,11,.15);color:var(--amber)}
   .badge.red{background:rgba(239,68,68,.15);color:var(--red)}
-  .note{background:var(--soft);border:1px solid #1f2937;padding:16px;border-radius:var(--radius)}
-  .k{display:flex;gap:10px;align-items:center;margin:6px 0;color:var(--muted)}
-  .dot{width:10px;height:10px;border-radius:50%}
-  .card{
-    background:var(--card);border:1px solid #1f2937;border-radius:18px;padding:14px 16px;
-    display:flex;justify-content:space-between;gap:10px;box-shadow:var(--shadow)
-  }
-  .left{min-width:0}
-  .title{font-weight:800}
-  .id{background:#1f2937;color:#cbd5e1;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
-  .val{font-size:28px;font-weight:800;margin-top:6px}
-  .meta{color:var(--muted);font-size:13px;margin-top:2px}
-  .score{font-weight:800}
-  .chips{display:flex;gap:6px;flex-wrap:wrap}
-  details.debug{margin-top:16px}
-  .log{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0b1226;border:1px solid #1f2937;padding:14px;border-radius:12px;color:#cbd5e1}
-  @media(min-width:720px){
-    .grid{grid-template-columns:1fr 1fr}
-  }
+  .note{background:var(--soft);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+  /* Exec Summary block */
+  .exec{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-top:12px}
+  .exec h3{margin:0 0 6px}
+  .exec p{margin:6px 0;color:var(--text)}
+  .tab{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
+  .tab th,.tab td{padding:10px;border-bottom:1px solid #1c2740;text-align:left;font-size:14px}
+  .tab th{color:#cfe0ff;font-weight:700}
+  .chip{background:var(--chip);color:var(--chipText);padding:2px 8px;border-radius:999px;font-size:12px}
+  .r{color:var(--red)} .a{color:var(--amber)} .g{color:var(--green)}
+  /* Indicator cards */
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+  @media(min-width:740px){.grid{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+  .title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .id{background:var(--chip);color:var(--chipText);padding:2px 8px;border-radius:999px;font-size:12px}
+  .val{font-size:30px;font-weight:900;margin:6px 0 2px}
+  .meta{color:var(--muted);font-size:13px}
+  .scorePill{font-weight:800;border-radius:8px;padding:6px 8px}
+  .scorePill.g{background:#103524} .scorePill.a{background:#3a2a10} .scorePill.r{background:#3a1313}
+  details{margin-top:14px} summary{cursor:pointer}
+  .log{white-space:pre-wrap;background:#0e172a;border:1px solid var(--line);border-radius:12px;padding:12px;color:#cbd5e1}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <img src="logo.png" alt="Alba crest" onerror="this.style.display='none'">
-      <div>
-        <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-        <p class="sub">U.S. crash-risk dashboard from 20+ economic & market indicators.</p>
-      </div>
-    </header>
-
-    <div class="bar">
-      <input id="key" placeholder="Enter your FRED API key (32 chars)" inputmode="latin" autocomplete="off">
-      <select id="preset" title="Proxy">
-        <option value="auto" selected>Auto (race)</option>
-        <option value="codetabs">Codetabs</option>
-        <option value="allorigins">AllOrigins</option>
-        <option value="isogit">isomorphic-git CORS</option>
-        <option value="thingproxy">ThingProxy</option>
-        <option value="direct">Direct FRED</option>
-      </select>
-      <button id="run">Run / Refresh</button>
+<div class="wrap">
+  <header>
+    <img src="logo.png" alt="Mark" onerror="this.style.display='none'">
+    <div>
+      <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+      <div class="sub">U.S. crash-risk dashboard from 20+ economic & market indicators.</div>
     </div>
+  </header>
 
-    <div class="summary">
-      <div class="gauge" id="gauge" style="--gcol:#f59e0b;--gstop:0deg" data-val="—"></div>
-      <div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="opacity:.8;font-weight:700">CRC</span>
-          <span id="badge" class="badge amber">—</span>
-        </div>
-        <div style="color:var(--muted);margin-top:4px">Composite = average of indicator percentiles vs last 10y (invert where higher value = higher risk).</div>
-      </div>
-    </div>
-
-    <div class="note">
-      <h3 style="margin:0 0 8px">How to read the CRC (RAG)</h3>
-      <div class="k"><span class="dot" style="background:var(--green)"></span><strong>&nbsp;Green &lt; 40</strong>&nbsp;• Most indicators are in the lower half of their 10-year ranges.</div>
-      <div class="k"><span class="dot" style="background:var(--amber)"></span><strong>&nbsp;Amber 40–70</strong>&nbsp;• Mixed/deteriorating signals. Tighten risk controls; consider selective hedges.</div>
-      <div class="k"><span class="dot" style="background:var(--red)"></span><strong>&nbsp;Red &gt; 70</strong>&nbsp;• Broad elevation vs the last decade; emphasize capital preservation and liquidity.</div>
-    </div>
-
-    <div id="cards" class="grid"></div>
-
-    <details class="debug">
-      <summary>Show Debug Log</summary>
-      <div id="log" class="log"></div>
-    </details>
+  <div class="bar">
+    <input id="key" placeholder="Paste your FRED API key (32 chars)" inputmode="latin" autocomplete="off">
+    <select id="proxySel">
+      <option value="auto">Auto (race)</option>
+      <option value="codetabs">Codetabs</option>
+      <option value="allorigins">AllOrigins</option>
+      <option value="isogit">isomorphic-git CORS</option>
+      <option value="thingproxy">ThingProxy</option>
+      <option value="direct">Direct</option>
+    </select>
+    <button id="runBtn">Run / Refresh</button>
   </div>
 
+  <!-- CRC summary row -->
+  <div class="summary">
+    <div class="gaugeBox">
+      <svg class="gauge" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-label="CRC gauge">
+        <defs>
+          <linearGradient id="crcgrad" x1="0%" x2="100%">
+            <stop offset="0%" stop-color="#10b981"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#0e172a" stroke-width="10"/>
+        <circle id="crcArc" cx="50" cy="50" r="42" fill="none" stroke="url(#crcgrad)" stroke-width="10" stroke-linecap="round"
+                transform="rotate(-90 50 50)" stroke-dasharray="0 999"/>
+        <text id="crcNum" x="50" y="57" text-anchor="middle" font-size="24" font-weight="900" fill="#e6ecf7">—</text>
+      </svg>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="opacity:.8;font-weight:800">CRC</span>
+        <span id="crcBadge" class="badge amber">—</span>
+      </div>
+      <div class="sub">Composite = average of indicator percentiles vs last 10y (using sensible inverts).</div>
+    </div>
+  </div>
+
+  <!-- Executive Summary (auto) -->
+  <div id="exec" class="exec" style="display:none">
+    <h3>Executive Summary</h3>
+    <p id="execText"></p>
+    <table class="tab" id="execTable">
+      <thead><tr><th>Theme</th><th>Signal</th><th>Key series</th><th>RAG</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Indicator cards -->
+  <div id="cards" class="grid"></div>
+
+  <details>
+    <summary>Debug log</summary>
+    <pre id="log" class="log"></pre>
+  </details>
+</div>
+
 <script>
-/* ---------------------------- Config ---------------------------------- */
+/* ---------- Config ---------- */
 const SERIES = [
-  { id:'DGS10',     name:'10Y Treasury yield',          fmt:v=>(+v).toFixed(2)+'%',       invert:false },
-  { id:'T10Y2Y',    name:'10Y–2Y spread',               fmt:v=>(+v).toFixed(2)+'%',       invert:true  },
-  { id:'T10Y3M',    name:'10Y–3M spread',               fmt:v=>(+v).toFixed(2)+'%',       invert:true  },
-  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',           fmt:v=>(+v).toFixed(2),           invert:true  },
-  { id:'STLFSI4',   name:'St. Louis Financial Stress',  fmt:v=>(+v).toFixed(4),           invert:true  },
-  { id:'SP500',     name:'S&P 500 index',               fmt:v=>(+v).toLocaleString(),     invert:false },
-  { id:'VIXCLS',    name:'VIX index',                   fmt:v=>(+v).toFixed(2),           invert:true  },
-  { id:'UNRATE',    name:'Unemployment rate',           fmt:v=>(+v).toFixed(1)+'',        invert:true  },
-  { id:'UMCSENT',   name:'UMich consumer sentiment',    fmt:v=>(+v).toFixed(1),           invert:false },
-  { id:'CPIAUCSL',  name:'CPI (headline)',              fmt:v=>(+v).toFixed(3),           invert:true  },
-  { id:'INDPRO',    name:'Industrial production',       fmt:v=>(+v).toFixed(4),           invert:true  },
-  { id:'PCEPI',     name:'PCE prices',                  fmt:v=>(+v).toFixed(3),           invert:true  },
-  { id:'RSFSXMV',   name:'Retail sales excl. auto',     fmt:v=>(+v).toFixed(3),           invert:true  }, // alt to RSAFS
-  { id:'PERMIT',    name:'Building permits',            fmt:v=>(+v).toLocaleString(),     invert:true  },
-  { id:'HOUST',     name:'Housing starts',              fmt:v=>(+v).toLocaleString(),     invert:true  },
-  { id:'DTWEXBGS',  name:'Trade-weighted USD (broad)',  fmt:v=>(+v).toFixed(4),           invert:true  },
-  { id:'NFCI',      name:'Chicago Fed Fin. Conditions', fmt:v=>(+v).toFixed(5),           invert:true  },
+  { id:'DGS10',       name:'10Y Treasury yield',              invert:false, fmt:v=>(+v).toFixed(2)+'%' },
+  { id:'T10Y2Y',      name:'10Y–2Y spread',                   invert:true,  fmt:v=>(+v).toFixed(2)+'%' },
+  { id:'T10Y3M',      name:'10Y–3M spread',                   invert:true,  fmt:v=>(+v).toFixed(2)+'%' },
+  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',                 invert:true,  fmt:v=>(+v).toFixed(2) },
+  { id:'STLFSI4',     name:'St. Louis Financial Stress (v4)', invert:true,  fmt:v=>(+v).toFixed(4) },
+  { id:'SP500',       name:'S&P 500 index',                   invert:false, fmt:v=>(+v).toLocaleString() },
+  { id:'VIXCLS',      name:'VIX index',                       invert:true,  fmt:v=>(+v).toFixed(2) },
+  { id:'UNRATE',      name:'Unemployment rate',               invert:true,  fmt:v=>(+v).toFixed(1) },
+  { id:'ICSA',        name:'Initial jobless claims (wkly)',   invert:true,  fmt:v=>(+v).toLocaleString() },
+  { id:'UMCSENT',     name:'UMich consumer sentiment',        invert:false, fmt:v=>(+v).toFixed(1) },
+  { id:'CPIAUCSL',    name:'CPI (headline)',                  invert:true,  fmt:v=>(+v).toFixed(3) },
+  { id:'CPILFESL',    name:'Core CPI',                        invert:true,  fmt:v=>(+v).toFixed(3) },
+  { id:'PCEPI',       name:'PCE prices',                      invert:true,  fmt:v=>(+v).toFixed(3) },
+  { id:'INDPRO',      name:'Industrial production',           invert:true,  fmt:v=>(+v).toFixed(3) },
+  { id:'TCU',         name:'Capacity utilization',            invert:true,  fmt:v=>(+v).toFixed(2) },
+  { id:'RSAFS',       name:'Retail sales (advance)',          invert:false, fmt:v=>(+v).toLocaleString() },
+  { id:'HOUST',       name:'Housing starts',                  invert:true,  fmt:v=>(+v).toLocaleString() },
+  { id:'PERMIT',      name:'Building permits',                invert:true,  fmt:v=>(+v).toLocaleString() },
+  { id:'DTWEXBGS',    name:'Trade-weighted USD (broad)',      invert:true,  fmt:v=>(+v).toFixed(4) },
+  { id:'SP500MN',     name:'S&P 500 (monthly avg)',           invert:false, fmt:v=>(+v).toFixed(1) }
 ];
 
-const ONE_DAY = 86400000;
-const TEN_YEARS_MS = 3652 * ONE_DAY; // ~10 years
-const CACHE_MS = 30 * 60 * 1000;
+/* Themes for Exec Summary (each maps to subset of series) */
+const THEMES = [
+  { key:'curve',    label:'Yield curve',     ids:['T10Y2Y','T10Y3M'] },
+  { key:'credit',   label:'Credit stress',   ids:['BAMLH0A0HYM2','STLFSI4'] },
+  { key:'equities', label:'Equities',        ids:['SP500','VIXCLS','SP500MN'] },
+  { key:'labor',    label:'Labor market',    ids:['UNRATE','ICSA'] },
+  { key:'infl',     label:'Inflation',       ids:['CPIAUCSL','CPILFESL','PCEPI','DGS10'] },
+  { key:'housing',  label:'Housing',         ids:['HOUST','PERMIT'] },
+  { key:'spend',    label:'Spending/Output', ids:['RSAFS','INDPRO','TCU'] },
+  { key:'sent',     label:'Sentiment',       ids:['UMCSENT'] },
+  { key:'dollar',   label:'Dollar',          ids:['DTWEXBGS'] },
+];
 
-/* ------------------------ UI helpers ---------------------------------- */
-const el = sel => document.querySelector(sel);
-const log = (...a)=>{ const L=el('#log'); L.textContent += a.join(' ')+'\n'; };
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const log = (...m)=>{ $('#log').textContent += m.join(' ') + "\n"; };
 
-function ragColor(score){
-  if (score < 40) return {cls:'green', col:'#10b981'};
-  if (score < 70) return {cls:'amber', col:'#f59e0b'};
-  return {cls:'red', col:'#ef4444'};
-}
-function setGauge(score){
-  const g = el('#gauge');
-  if (isNaN(score)){ g.style.setProperty('--gstop','0deg'); g.dataset.val='—'; return; }
-  const deg = Math.max(6, Math.min(354, (score/100)*360));
-  const {col, cls} = ragColor(score);
-  g.style.setProperty('--gcol', col);
-  g.style.setProperty('--gstop', deg+'deg');
-  g.dataset.val = Math.round(score);
-  const badge = el('#badge');
-  badge.className = 'badge '+cls;
-  badge.textContent = `CRC: ${Math.round(score)} — ${cls.toUpperCase()}`;
-}
-
-/* ----------------------- Fetch (proxy race) --------------------------- */
 function proxied(url, which){
   const enc = encodeURIComponent(url);
   const routes = {
@@ -179,130 +173,155 @@ function proxied(url, which){
     thingproxy: `https://thingproxy.freeboard.io/fetch/${url}`,
     direct:      url
   };
-  if (which && which!=='auto') return routes[which];
-  return [routes.codetabs, routes.allorigins, routes.isogit, routes.thingproxy, routes.direct];
+  return which==='auto' ? [routes.codetabs,routes.allorigins,routes.isogit,routes.thingproxy,routes.direct] : [routes[which]];
+}
+async function fetchRace(url, which='auto'){
+  const paths = proxied(url, which);
+  const attempts = paths.map(u => fetch(u).then(r=>r.ok?r.json():Promise.reject(r.status)).catch(e=>({__err:e,u})));
+  const results = await Promise.allSettled(attempts);
+  for (const r of results){ if (r.status==='fulfilled' && !r.value.__err) return r.value; }
+  throw new Error('All proxies failed');
 }
 
-async function fetchFred(series, apiKey, prefer){
-  const fred = `https://api.stlouisfed.org/fred/series/observations?series_id=${series}&file_type=json&api_key=${apiKey}`;
-  const tried = proxied(fred, prefer);
-  if (Array.isArray(tried)){
-    // race proxies: first success wins
-    const attempts = tried.map(u => fetch(u).then(r => r.ok ? r.json() : Promise.reject(r.status)).catch(e => ({__err:e,u})));
-    const results = await Promise.allSettled(attempts);
-    for (const r of results){
-      if (r.status==='fulfilled' && !r.value.__err){ r.value.__via='race'; return r.value; }
-    }
-    // if all failed, throw last error
-    const last = results[results.length-1];
-    throw new Error('All proxies failed: '+(last.value?.__err || last.reason));
-  }else{
-    const res = await fetch(tried);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const j = await res.json(); j.__via=prefer; return j;
-  }
+function fredURL(id,key){
+  const start = new Date(); start.setFullYear(start.getFullYear()-11);
+  const iso = start.toISOString().slice(0,10);
+  return `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&file_type=json&observation_start=${iso}&api_key=${key}`;
 }
 
-/* -------------------- Percentile vs last 10y -------------------------- */
-function last10yPercentile(observations, invert=false){
-  const now = Date.now();
-  const windowStart = now - TEN_YEARS_MS;
-  const pts = observations
-    .map(o => ({ t: new Date(o.date+'T00:00:00Z').getTime(), v: parseFloat(o.value) }))
-    .filter(o => isFinite(o.v));
-  // latest
-  const latest = pts[pts.length-1];
-  if (!latest) return { latestValue:NaN, latestDate:'—', pct:NaN };
-  // window
-  const ref = pts.filter(p => p.t >= windowStart);
-  const refVals = ref.length ? ref : pts.slice(-120); // fallback ~10 years monthly
-  const values = refVals.map(p => p.v).sort((a,b)=>a-b);
-  const latestV = latest.v;
-  let pct = values.length ? (values.findIndex(v => v > latestV) / values.length) * 100 : NaN;
-  if (pct===-Infinity || pct===Infinity || isNaN(pct)) pct = NaN;
-  if (invert && isFinite(pct)) pct = 100 - pct;
-  return { latestValue: latestV, latestDate: new Date(latest.t).toISOString().slice(0,10), pct: Math.max(0, Math.min(100, pct)) };
+function cleanObs(observations){
+  return (observations||[]).map(o=>({d:o.date,v:parseFloat(o.value)})).filter(o=>Number.isFinite(o.v));
 }
 
-/* ------------------------ Main runner --------------------------------- */
-async function run(){
-  const apiKey = el('#key').value.trim();
-  const prefer = el('#preset').value;
-  el('#log').textContent='';
-  if (!/^[a-f0-9]{32}$/.test(apiKey)){ alert('Enter a valid 32-char FRED API key'); return; }
-
-  localStorage.setItem('fred_key', apiKey);
-
-  const cards = el('#cards');
-  cards.innerHTML = '';
-  setGauge(NaN);
-
-  const cacheKey = `crc_${prefer}_${apiKey.slice(0,6)}`;
-  const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-  if (cached && (Date.now()-cached.ts) < CACHE_MS){
-    log('Loaded from cache');
-    paint(cached.payload);
-    return;
-  }
-
-  log(`Fetching ${SERIES.length} indicators (proxy: ${prefer})`);
-  const payload = [];
-  let done=0;
-
-  await Promise.all(SERIES.map(async s=>{
-    try{
-      const j = await fetchFred(s.id, apiKey, prefer);
-      const { latestValue, latestDate, pct } = last10yPercentile(j.observations, s.invert);
-      payload.push({ id:s.id, name:s.name, value:latestValue, date:latestDate, score: Math.round(pct), fmt:s.fmt, invert:s.invert });
-      log(`✓ ${s.id} ok`);
-    }catch(e){
-      payload.push({ id:s.id, name:s.name, error:String(e), score:null });
-      log(`✗ ${s.id} failed: ${e}`);
-    }finally{ done++; }
-  }));
-
-  localStorage.setItem(cacheKey, JSON.stringify({ts:Date.now(), payload}));
-  paint(payload);
+function percentileLast10y(obs, latest){
+  const cut = new Date(); cut.setFullYear(cut.getFullYear()-10);
+  const sample = obs.filter(o=>new Date(o.d)>=cut);
+  const arr = (sample.length?sample:obs).map(o=>o.v).sort((a,b)=>a-b);
+  if (!arr.length || !Number.isFinite(latest)) return NaN;
+  let i=0; while(i<arr.length && arr[i]<=latest) i++;
+  return Math.max(0, Math.min(100, (i/arr.length)*100));
 }
 
-function paint(list){
-  // compute CRC from available scores
-  const nums = list.map(d=>d.score).filter(n=>typeof n==='number' && isFinite(n));
-  const crc = nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : NaN;
-  setGauge(crc);
+function rag(score){ return score<40?'g':score>70?'r':'a'; }
+function ragBadge(el,score){
+  el.className='badge '+(score<40?'green':score>70?'red':'amber');
+  el.textContent = `CRC: ${Math.round(score)} — ${(score<40?'GREEN':score>70?'RED':'AMBER')}`;
+}
+function setGauge(score){
+  const C = 2*Math.PI*42; // r=42
+  const arc = $('#crcArc');
+  const dash = Math.max(0, Math.min(1, score/100))*C;
+  arc.setAttribute('stroke-dasharray', `${dash} ${C-dash}`);
+  $('#crcNum').textContent = Number.isFinite(score)? Math.round(score) : '—';
+}
 
-  // sort by score desc for readability
-  list.sort((a,b)=> (b.score??-1) - (a.score??-1));
+/* ---------- Exec Summary generator (<=500 words) ---------- */
+function buildExec(payload){
+  // Build per-theme averages and pick a lead series/value
+  const map = Object.fromEntries(payload.map(x=>[x.id,x]));
+  const rows = THEMES.map(t=>{
+    const pts = t.ids.map(id=>map[id]).filter(Boolean);
+    const scores = pts.map(p=>p.score).filter(n=>Number.isFinite(n));
+    const avg = scores.length? scores.reduce((a,b)=>a+b,0)/scores.length : NaN;
+    const key = pts.find(p=>Number.isFinite(p.score)) || pts[0];
+    return { theme:t.label, avg, key };
+  });
 
-  const cards = el('#cards');
-  cards.innerHTML = list.map(d=>{
-    const tag = `<span class="id">${d.id}</span>`;
-    if (d.error){
-      return `<div class="card"><div class="left"><div class="title">${d.name} ${tag}</div>
-              <div class="meta" style="color:#ef4444">error: ${escapeHtml(d.error)}</div></div>
-              <div class="chips"><span class="badge red">ERR</span></div></div>`;
-    }
-    const fmt = d.fmt ? d.fmt(d.value) : String(d.value);
-    const {cls} = ragColor(d.score ?? 0);
-    return `<div class="card">
-      <div class="left">
-        <div class="title">${d.name} ${tag}</div>
-        <div class="val">${fmt}</div>
-        <div class="meta">${d.date ? d.date : '—'} &nbsp; • &nbsp; score <span class="score">${d.score}</span></div>
-      </div>
-      <div class="chips"><span class="badge ${cls}">${d.score ?? '—'}</span></div>
-    </div>`;
+  // Compose short narrative (100–200 words) based on key themes:
+  const curve = rows.find(r=>r.theme==='Yield curve')?.avg;
+  const credit= rows.find(r=>r.theme==='Credit stress')?.avg;
+  const eq    = rows.find(r=>r.theme==='Equities')?.avg;
+  const labor = rows.find(r=>r.theme==='Labor market')?.avg;
+  const infl  = rows.find(r=>r.theme==='Inflation')?.avg;
+  const sent  = rows.find(r=>r.theme==='Sentiment')?.avg;
+  const spend = rows.find(r=>r.theme==='Spending/Output')?.avg;
+  const house = rows.find(r=>r.theme==='Housing')?.avg;
+
+  const bits = [];
+  if (Number.isFinite(curve))  bits.push(`${curve>70?'Severely inverted':'Still inverted'} yield curve keeps recession risk elevated.`);
+  if (Number.isFinite(credit)) bits.push(`Credit ${credit>70?'is tightening materially':'shows pockets of strain'}, watch HY spreads and stress indices.`);
+  if (Number.isFinite(eq))     bits.push(`Equities read ${eq>70?'stretched/fragile':'mixed'}; volatility ${eq>60?'is building':'remains contained'}.`);
+  if (Number.isFinite(labor))  bits.push(`Labor ${labor>60?'is softening':'remains resilient'}; claims/unemployment are key near-term pivots.`);
+  if (Number.isFinite(infl))   bits.push(`Inflation ${infl>60?'remains sticky':'is easing'}, shaping policy path and real yields.`);
+  if (Number.isFinite(house))  bits.push(`Housing ${house>60?'is weak':'is stabilizing at low levels'} (starts/permits).`);
+  if (Number.isFinite(spend))  bits.push(`Spending/output ${spend>60?'are cooling':'are steady but late-cycle'}.`);
+  if (Number.isFinite(sent))   bits.push(`Sentiment ${sent>60?'is subdued':'is improving from lows'}.`);
+
+  const text = bits.join(' ');
+  $('#execText').textContent = text;
+  $('#exec').style.display = 'block';
+
+  // Table rows
+  const tbody = $('#execTable tbody');
+  tbody.innerHTML = rows.map(r=>{
+    const k = r.key;
+    const chip = `<span class="chip">${k?.id||'—'}</span>`;
+    const ragc = rag(r.avg||NaN);
+    const ragTxt = ragc==='g'?'GREEN':ragc==='a'?'AMBER':'RED';
+    const score = Number.isFinite(r.avg)? Math.round(r.avg) : '—';
+    return `<tr>
+      <td>${r.theme}</td>
+      <td>${Number.isFinite(r.avg)? (r.avg>70?'<span class="r">Elevated</span>':r.avg<40?'<span class="g">Benign</span>':'<span class="a">Mixed</span>') : '—'}</td>
+      <td>${k?`${k.name} ${chip} · ${k.valueFmt||'—'} (${k.date||'—'})`:'—'}</td>
+      <td><span class="chip">${score} ${ragTxt}</span></td>
+    </tr>`;
   }).join('');
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+/* ---------- Render cards ---------- */
+function cardHTML(d){
+  const cls = rag(d.score);
+  return `<div class="card">
+    <div class="title">
+      <div>${d.name} <span class="id">${d.id}</span></div>
+      <div class="scorePill ${cls}">${Number.isFinite(d.score)? Math.round(d.score) : '—'}</div>
+    </div>
+    <div class="val">${d.valueFmt ?? '—'}</div>
+    <div class="meta">${d.date ?? '—'}</div>
+  </div>`;
+}
 
-/* --------------------- Wire up UI & defaults -------------------------- */
-el('#run').addEventListener('click', run);
-el('#preset').addEventListener('change', ()=>{ localStorage.setItem('proxy_pref', el('#preset').value); });
-(function boot(){
-  const saved = localStorage.getItem('fred_key'); if (saved) el('#key').value=saved;
-  const pref = localStorage.getItem('proxy_pref'); if (pref) el('#preset').value=pref;
+/* ---------- Main ---------- */
+async function run(){
+  $('#log').textContent='';
+  const key = $('#key').value.trim();
+  const which = $('#proxySel').value;
+  if (!/^[a-f0-9]{32}$/i.test(key)){ alert('Enter a valid 32-character FRED API key.'); return; }
+  localStorage.setItem('fred_key', key);
+
+  const items = await Promise.all(SERIES.map(async s=>{
+    try{
+      const j = await fetchRace(fredURL(s.id,key), which);
+      const obs = cleanObs(j.observations);
+      const latest = obs[obs.length-1];
+      const pct = percentileLast10y(obs, latest?.v);
+      const score = Number.isFinite(pct) ? (s.invert ? 100-pct : pct) : NaN;
+      const valueFmt = latest && Number.isFinite(latest.v) ? s.fmt(latest.v) : '—';
+      return { id:s.id, name:s.name, score, value:valueFmt==='—'?NaN:latest.v, valueFmt, date:latest?.d };
+    }catch(e){
+      log('fail', s.id, e);
+      return { id:s.id, name:s.name, score:NaN, value:NaN, valueFmt:'—', date:'—' };
+    }
+  }));
+
+  // CRC
+  const usable = items.map(x=>x.score).filter(Number.isFinite);
+  const crc = usable.length ? usable.reduce((a,b)=>a+b,0)/usable.length : NaN;
+  setGauge(crc);
+  ragBadge($('#crcBadge'), Number.isFinite(crc)?crc:0);
+
+  // Exec summary + table
+  buildExec(items);
+
+  // Cards (sort by score desc)
+  items.sort((a,b)=>(b.score??-1)-(a.score??-1));
+  $('#cards').innerHTML = items.map(cardHTML).join('');
+}
+
+/* ---------- Boot ---------- */
+(function init(){
+  const saved = localStorage.getItem('fred_key'); if (saved) $('#key').value = saved;
+  $('#runBtn').addEventListener('click', run);
 })();
 </script>
 </body>
