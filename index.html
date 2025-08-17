@@ -1,303 +1,255 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<meta name="color-scheme" content="dark light"/>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>The Marshall Stock Market Crash Composite Indicator</title>
+<meta name="theme-color" content="#0b1220" />
 <style>
   :root{
-    --bg:#0e1320;
-    --card:#131a2a;
-    --muted:#9fb0d6;
-    --text:#eaf0ff;
-    --accent:#7db0ff;
-    --amber:#f1a93c;
-    --green:#45c27b;
-    --red:#d85a5a;
-    --chip:#24304a;
-    --shadow: 0 6px 24px rgba(0,0,0,.35);
+    --bg:#0b1220; --card:#121a2a; --muted:#99a3b3; --text:#e8eefc;
+    --accent:#6ea8fe; --green:#10b981; --amber:#f59e0b; --red:#ef4444;
+    --chip:#24324a; --chip-text:#c9d6ea;
   }
-  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial}
-  .wrap{max-width:980px;margin:auto;padding:28px 16px 80px}
-  .brand{display:flex;gap:18px;align-items:center;margin:0 0 12px}
-  .alba-seal{width:84px;height:84px;flex:0 0 auto}
-  h1{font-size:clamp(22px,4vw,40px);margin:0}
-  .sub{margin:.25rem 0 0;color:var(--muted)}
-  .controls{display:flex;gap:10px;align-items:center;margin:22px 0 18px;flex-wrap:wrap}
-  input[type=text]{flex:1 1 380px;background:#0b0f1b;border:1px solid #27324b;color:var(--text);
-    border-radius:10px;padding:12px 14px;outline:none}
-  input::placeholder{color:#6f7da1}
-  button{background:linear-gradient(180deg,#4893ff,#3178ef);border:none;color:white;
-    padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
-  select{background:#0b0f1b;border:1px solid #27324b;color:var(--text);border-radius:10px;padding:10px 12px}
-  .badge{display:inline-block;padding:16px 20px;border-radius:16px;font-weight:900;letter-spacing:.3px;
-    box-shadow:var(--shadow);margin:6px 0 18px;font-size:clamp(18px,3.2vw,26px)}
-  .badge.green{background:var(--green)}
-  .badge.amber{background:var(--amber)}
-  .badge.red{background:var(--red)}
-  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-  @media (max-width:740px){.grid{grid-template-columns:1fr}.brand{flex-direction:column;align-items:flex-start}.alba-seal{width:72px;height:72px}}
-  .card{background:var(--card);border-radius:16px;padding:16px 16px 14px;border:1px solid #1e2942}
-  .card h3{margin:0 0 6px;font-size:18px}
-  .id{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 8px;color:#b9c7e8;font-size:12px;margin-left:6px}
-  .val{font-size:28px;font-weight:800;margin:8px 0 2px}
-  .meta{color:#90a4d4;font-size:13px}
-  .score{margin-top:10px;color:#b9c7e8}
-  .log{white-space:pre-wrap;background:#0b0f1b;border:1px solid #27324b;border-radius:12px;padding:14px;display:none}
-  .log.open{display:block}
-  details summary{cursor:pointer;color:#9fb0d6;margin:14px 0 0}
-  a{color:var(--accent);text-decoration:none}
-  a:hover{text-decoration:underline}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+  a{color:var(--accent);text-decoration:none} h1,h2,h3{margin:0 0 .5rem}
+  .wrap{max-width:980px;margin:0 auto;padding:24px}
+  header{display:grid;grid-template-columns:72px 1fr;gap:16px;align-items:center;margin:8px 0 16px}
+  header img{width:72px;height:72px;border-radius:8px;background:#0e172a;object-fit:cover;border:1px solid #1f2b44}
+  header .sub{color:var(--muted)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0 18px}
+  input[type=text]{flex:1 1 340px;background:#0e172a;border:1px solid #1f2b44;border-radius:12px;color:var(--text);padding:12px 14px;font-size:15px}
+  select{background:#0e172a;border:1px solid #1f2b44;color:var(--text);border-radius:12px;padding:10px 12px}
+  button{background:linear-gradient(180deg,#3b82f6,#2563eb);border:none;color:#fff;border-radius:12px;padding:12px 16px;font-weight:600}
+  .badge{display:inline-block;margin:6px 0 16px;padding:16px 18px;border-radius:14px;font-weight:800;font-size:22px}
+  .b-green{background:linear-gradient(180deg,#10b981,#059669)}
+  .b-amber{background:linear-gradient(180deg,#f59e0b,#d97706)}
+  .b-red{background:linear-gradient(180deg,#ef4444,#dc2626)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid #1f2b44;border-radius:14px;padding:16px}
+  .chip{display:inline-block;background:var(--chip);color:var(--chip-text);padding:4px 8px;border-radius:999px;font-size:12px;margin-left:8px}
+  .val{font-size:32px;font-weight:800;letter-spacing:0.3px;margin:6px 0}
+  .muted{color:var(--muted);font-size:14px}
+  details{background:var(--card);border:1px solid #1f2b44;border-radius:14px;padding:12px;margin-top:16px}
+  summary{cursor:pointer;font-weight:700}
+  pre{white-space:pre-wrap;margin:10px 0 0;color:#cbd5e1}
+  .key{background:var(--card);border:1px solid #1f2b44;border-radius:14px;padding:16px;margin:10px 0 18px}
+  .key h3{margin-bottom:8px}
+  .legend{display:grid;grid-template-columns:120px 1fr;gap:10px;margin:8px 0}
+  .dot{width:14px;height:14px;border-radius:999px;display:inline-block;margin-right:8px;position:relative;top:2px}
+  .g{background:#10b981}.a{background:#f59e0b}.r{background:#ef4444}
 </style>
 </head>
 <body>
-  <div class="wrap">
-
-    <!-- Branding block with Alba seal -->
-    <div class="brand">
-      <svg class="alba-seal" viewBox="0 0 260 260" aria-label="Dèanta ann an Alba — seal" role="img">
-        <defs>
-          <path id="arcTop" d="M130,130 m0,-105 a105,105 0 1,1 0,210 a105,105 0 1,1 0,-210" />
-          <path id="arcBot" d="M130,130 m0,105 a105,105 0 1,1 0,-210 a105,105 0 1,1 0,210" />
-          <style>
-            .s-ring{fill:none;stroke:#dfe6ff;stroke-width:8}
-            .s-text{fill:#dfe6ff;font:700 24px/1 system-ui,-apple-system,Segoe UI,Inter,Roboto}
-            .s-knot{fill:none;stroke:#dfe6ff;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
-          </style>
-        </defs>
-        <circle cx="130" cy="130" r="120" class="s-ring"/>
-        <circle cx="130" cy="130" r="100" class="s-ring"/>
-        <text class="s-text"><textPath href="#arcTop" startOffset="18%">DÈANTA ANN AN</textPath></text>
-        <text class="s-text"><textPath href="#arcBot" startOffset="42%">ALBA</textPath></text>
-        <path class="s-knot" d="M130 75 C 95 110, 95 150, 130 185 C 165 150, 165 110, 130 75 Z"/>
-        <path class="s-knot" d="M82 140 C 112 140, 148 140, 178 140"/>
-        <path class="s-knot" d="M98 106 C 120 120, 140 140, 162 154"/>
-        <path class="s-knot" d="M162 106 C 140 120, 120 140, 98 154"/>
-      </svg>
-      <div>
-        <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-        <p class="sub">Live U.S. crash-risk dashboard — powered by 20+ economic &amp; market indicators.</p>
-      </div>
+<div class="wrap">
+  <header>
+    <!-- Use your provided Alba mark file name -->
+    <img src="logo-alba.png" alt="Alba knot mark" onerror="this.style.display='none'">
+    <div>
+      <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+      <div class="sub">Live U.S. crash-risk dashboard — powered by 20+ economic &amp; market indicators.</div>
     </div>
+  </header>
 
-    <!-- Controls -->
-    <div class="controls">
-      <input id="key" type="text" inputmode="latin" spellcheck="false" placeholder="Paste your FRED API key (32 chars)…"/>
-      <select id="preset">
-        <option value="core">Core (fast, reliable)</option>
-        <option value="full">Full set (20 indicators)</option>
-      </select>
-      <button id="run">Run / Refresh</button>
-    </div>
-
-    <!-- CRC badge -->
-    <div id="crc" class="badge amber">CRC: Loading…</div>
-
-    <!-- Cards -->
-    <div id="cards" class="grid" role="list"></div>
-
-    <!-- Debug -->
-    <details id="dbgWrap">
-      <summary>Show Debug Log</summary>
-      <div id="log" class="log"></div>
-    </details>
+  <div class="controls">
+    <input id="apiKey" type="text" inputmode="latin" autocomplete="off" placeholder="Paste your 32-char FRED API key (saved locally)" />
+    <select id="proxySel" title="Proxy">
+      <option value="auto">Auto (race)</option>
+      <option value="allorigins">AllOrigins</option>
+      <option value="codetabs">CodeTabs</option>
+      <option value="freeboard">Freeboard</option>
+    </select>
+    <button id="runBtn">Run / Refresh</button>
   </div>
 
-<script>
-/* ========= Small utilities ========= */
-const $ = s => document.querySelector(s);
-const log = (...xs)=>{ const el=$("#log"); el.textContent += xs.join(" ") + "\n"; };
-const clearLog = ()=> $("#log").textContent="";
-const fmtNum = (n, d=2) => {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  const abs = Math.abs(n);
-  const decimals = abs>=1000 ? 0 : d;
-  return Number(n).toLocaleString(undefined,{maximumFractionDigits:decimals});
-};
-const parseVal = s => {
-  if (!s || s===".") return NaN;
-  const t = String(s).replace(/,/g,"");
-  return Number(t);
-};
-const colorFor = v => v>=70 ? "red" : v>=40 ? "amber" : "green";
+  <div id="crc" class="badge b-amber">CRC: —</div>
 
-/* ========= Series definitions =========
-   invert=true means lower value = higher crash risk (e.g., yield spreads)
-*/
-const SERIES_FULL = [
-  {id:"DGS10",     name:"10Y Treasury yield",                 invert:false},
-  {id:"T10Y2Y",    name:"10Y–2Y spread",                      invert:true },
-  {id:"T10Y3M",    name:"10Y–3M spread",                      invert:true },
-  {id:"PERMIT",    name:"Building permits",                   invert:false},
-  {id:"TCU",       name:"Capacity utilization",               invert:false},
-  {id:"NFCI",      name:"Chicago Fed Fin. Conditions",        invert:false},
-  {id:"CPILFESL",  name:"Core CPI",                           invert:false},
-  {id:"CPIAUCSL",  name:"CPI (headline)",                     invert:false},
-  {id:"HOUST",     name:"Housing starts",                     invert:false},
-  {id:"ICSA",      name:"Initial jobless claims (wkly)",      invert:true  }, // claims down = good ⇒ invert=false? We treat lower claims as lower risk so invert=true
-  {id:"PCEPI",     name:"PCE prices",                         invert:false},
-  {id:"INDPRO",    name:"Industrial production",              invert:false},
-  {id:"RSAFS",     name:"Retail sales (advance)",             invert:false},
-  {id:"SP500",     name:"S&P 500 index",                      invert:false}, // high level ⇒ higher drawdown risk (choose non-invert)
-  {id:"VIXCLS",    name:"VIX index",                          invert:false},
-  {id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS",                 invert:false},
-  {id:"STLFSI4",   name:"St. Louis Financial Stress (v4)",    invert:false},
-  {id:"DTWEXBGS",  name:"Trade-weighted USD (broad)",         invert:false},
-  {id:"UMCSENT",   name:"UMich consumer sentiment",           invert:true  }, // lower sentiment = higher risk
-  {id:"UNRATE",    name:"Unemployment rate",                  invert:false},
+  <div class="key">
+    <h3>How to read the CRC (RAG) score</h3>
+    <div class="legend"><div><span class="dot g"></span><b>Green&nbsp;&lt; 40</b></div><div>Most indicators sit in the lower half of their last-10y ranges. Markets are typically stable; many participants keep baseline risk.</div></div>
+    <div class="legend"><div><span class="dot a"></span><b>Amber&nbsp;40–70</b></div><div>Mixed or deteriorating signals. Common responses include tightening risk controls (position sizing, stops, selective hedges) and watching for confirmation.</div></div>
+    <div class="legend"><div><span class="dot r"></span><b>Red&nbsp;&gt; 70</b></div><div>Broad elevation vs. the last decade. Many focus on capital preservation, stress-testing exposures, and emphasizing defensive/liquid assets.</div></div>
+    <div class="muted">CRC is a simple average of each indicator’s **percentile vs the past 10 years** (with sensible “inverts” applied, e.g., higher unemployment = higher risk). It’s an aggregated risk thermometer—not a market-timing signal.</div>
+  </div>
+
+  <div id="cards" class="grid"></div>
+
+  <details id="dbg">
+    <summary>Debug Log</summary>
+    <pre id="log"></pre>
+  </details>
+</div>
+
+<script>
+/* -------------------- config -------------------- */
+const SERIES = [
+  { id:"DGS10",      name:"10Y Treasury yield",            invert:false, decimals:2, unit:"%" },
+  { id:"T10Y2Y",     name:"10Y–2Y spread",                 invert:true,  decimals:2, unit:"%" },
+  { id:"T10Y3M",     name:"10Y–3M spread",                 invert:true,  decimals:2, unit:"%" },
+  { id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS",            invert:false, decimals:2, unit:"%" },
+  { id:"STLFSI4",    name:"St. Louis Financial Stress (v4)", invert:false, decimals:4 },
+  { id:"SP500",      name:"S&P 500 index",                 invert:true,  decimals:1 },
+  { id:"VIXCLS",     name:"VIX index",                     invert:false, decimals:2 },
+  { id:"UNRATE",     name:"Unemployment rate",             invert:false, decimals:1, unit:"%" },
+  { id:"UMCSENT",    name:"UMich consumer sentiment",      invert:true,  decimals:1 },
+  { id:"CPIAUCSL",   name:"CPI (headline)",                invert:false, decimals:2 },
+  { id:"CPILFESL",   name:"Core CPI",                      invert:false, decimals:2 },
+  { id:"PCEPI",      name:"PCE prices",                    invert:false, decimals:3 },
+  { id:"INDPRO",     name:"Industrial production",         invert:false, decimals:2 },
+  { id:"TCU",        name:"Capacity utilization",          invert:false, decimals:2 },
+  { id:"RSAFS",      name:"Retail sales (advance)",        invert:false, decimals:0 },
+  { id:"HOUST",      name:"Housing starts",                invert:false, decimals:0 },
+  { id:"PERMIT",     name:"Building permits",              invert:false, decimals:0 },
+  { id:"DTWEXBGS",   name:"Trade-weighted USD (broad)",    invert:false, decimals:4 },
+  { id:"ICSA",       name:"Initial jobless claims (wkly)", invert:false, decimals:0 },
+  { id:"SP500MN",    name:"S&P 500 (monthly avg)",         invert:true,  decimals:1 }
 ];
 
-// a smaller, ultra-reliable subset (for “Core”)
-const SERIES_CORE = [
-  "DGS10","T10Y2Y","T10Y3M","NFCI","BAMLH0A0HYM2","STLFSI4",
-  "SP500","VIXCLS","UNRATE","UMCSENT","CPIAUCSL","INDPRO"
-].map(x => SERIES_FULL.find(s=>s.id===x));
-
-/* ========= FRED fetch with proxy race (fast & resilient) ========= */
-const FRED = (id, key) => {
-  const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json`;
-  const urls = [
-    base,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(base)}`,
-    `https://thingproxy.freeboard.io/fetch/${base}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(base)}`,
-    `https://cors.isomorphic-git.org/${base}`,
-  ];
-  return firstOk(urls, {timeout:9000}).then(r=>r.json());
+const PROXIES = {
+  allorigins: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  codetabs:   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  freeboard:  u => 'https://thingproxy.freeboard.io/fetch/' + u
 };
 
-function fetchWithTimeout(url,{timeout=9000}={}){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(),timeout);
-  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(t));
-}
-function firstOk(urls,opt){
-  return new Promise((resolve,reject)=>{
-    let pending = urls.length, firstErr=null, settled=false;
-    urls.forEach(u=>{
-      fetchWithTimeout(u,opt).then(r=>{
-        if (settled) return;
-        if (r.ok){ settled=true; resolve(r); }
-        else { if(!firstErr) firstErr = new Error(`HTTP ${r.status}`); if(--pending===0) reject(firstErr); }
-      }).catch(e=>{ if(!firstErr) firstErr=e; if(--pending===0) reject(firstErr); });
-    });
-  });
+/* -------------------- helpers -------------------- */
+const $ = s => document.querySelector(s);
+const log = msg => { const el = $("#log"); el.textContent += msg + "\n"; };
+const fmt = (v, dec=2) => Number(v).toLocaleString(undefined,{maximumFractionDigits:dec});
+const clamp01 = x => Math.min(1, Math.max(0, x));
+
+function badge(avg){
+  const b = $("#crc");
+  b.classList.remove('b-green','b-amber','b-red');
+  let color='b-amber', label='AMBER';
+  if (avg < 40){ color='b-green'; label='GREEN'; }
+  else if (avg > 70){ color='b-red'; label='RED'; }
+  b.classList.add(color);
+  b.textContent = `CRC: ${Math.round(avg)} — ${label}`;
 }
 
-/* ========= Percentile vs last ~10y window ========= */
-function windowLast10Y(observations){
-  // observations sorted asc by date; filter last 10y from latest date
-  const valid = observations.filter(o=>o.value && o.value!==".");
-  if (!valid.length) return [];
-  const lastDate = new Date(valid[valid.length-1].date);
-  const cutoff = new Date(lastDate); cutoff.setFullYear(cutoff.getFullYear()-10);
-  return valid.filter(o=>new Date(o.date)>=cutoff).map(o=>parseVal(o.value)).filter(v=>Number.isFinite(v));
-}
-function percentileRank(sample, x){
-  if (!sample.length || !Number.isFinite(x)) return NaN;
-  const sorted = sample.slice().sort((a,b)=>a-b);
-  let idx = 0;
-  while (idx<sorted.length && sorted[idx] <= x) idx++;
-  return Math.round(100 * idx / sorted.length); // 0..100
+function buildCards(){
+  const c = $("#cards"); c.innerHTML='';
+  for (const s of SERIES){
+    const id = `card-${s.id}`;
+    c.insertAdjacentHTML('beforeend', `
+      <div class="card" id="${id}">
+        <div><b>${s.name}</b> <span class="chip">${s.id}</span></div>
+        <div class="val" data-val>—</div>
+        <div class="muted" data-meta>—</div>
+        <div class="muted" data-score>score —</div>
+      </div>
+    `);
+  }
 }
 
-/* ========= UI ========= */
-const cards = $("#cards");
-const crcEl = $("#crc");
-const presetEl = $("#preset");
-const keyEl = $("#key");
-const runBtn = $("#run");
+function fredURL(seriesId, key){
+  const start = new Date(); start.setFullYear(start.getFullYear()-11);
+  const iso = start.toISOString().slice(0,10);
+  const base = 'https://api.stlouisfed.org/fred/series/observations';
+  return `${base}?series_id=${seriesId}&api_key=${key}&file_type=json&observation_start=${iso}`;
+}
 
-keyEl.value = localStorage.getItem("fred_api_key") || "";
+async function fetchRace(url, mode='auto', timeout=15000){
+  const make = (fn) => fetch(fn(url));
+  const racers = mode==='auto'
+    ? [PROXIES.allorigins, PROXIES.codetabs, PROXIES.freeboard].map(make)
+    : [ make(PROXIES[mode]) ];
+  const to = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), timeout));
+  if (racers.length===1){
+    const r = await Promise.race([racers[0], to]);
+    if(!r.ok) throw new Error(r.status+' '+r.statusText);
+    return r.json();
+  } else {
+    // Promise.any for first successful; if all fail, throw last error
+    const results = racers.map(p=>p.then(r=>r.ok?r.json():Promise.reject(new Error(r.status))));
+    return Promise.any(results);
+  }
+}
 
-runBtn.addEventListener("click", run);
-presetEl.addEventListener("change", ()=> run());
+function percentileLast10y(obs, latest){
+  // obs: [{date,value(number)}], assume already filtered to last 11y window by request
+  const cut = new Date(); cut.setFullYear(cut.getFullYear()-10);
+  const sample = obs.filter(o => new Date(o.date) >= cut && isFinite(o.value));
+  const arr = (sample.length>=24? sample : obs).map(o=>o.value).filter(v=>isFinite(v)).sort((a,b)=>a-b);
+  if (!arr.length) return { pct: NaN, n: 0 };
+  // percentile rank (<=)
+  let i = 0; while (i < arr.length && arr[i] <= latest) i++;
+  const pct = (i/arr.length)*100;
+  return { pct, n: arr.length };
+}
 
+/* -------------------- main runner -------------------- */
 async function run(){
-  clearLog();
-  const key = keyEl.value.trim();
-  localStorage.setItem("fred_api_key", key);
+  $("#log").textContent = '';
+  const key = $("#apiKey").value.trim();
+  const mode = $("#proxySel").value;
 
-  if (key.length !== 32){
-    crcEl.className = "badge red";
-    crcEl.textContent = "CRC: error — missing/invalid API key";
-    log("Invalid key length; expected 32 chars.");
-    return;
+  if(!/^[a-z0-9]{32}$/.test(key)){
+    alert("Please paste a valid 32-character FRED API key (lower-case letters/numbers).");
+    $("#apiKey").focus(); return;
   }
+  localStorage.setItem('fred_api_key', key);
 
-  const set = presetEl.value === "core" ? SERIES_CORE : SERIES_FULL;
-  crcEl.className = "badge amber";
-  crcEl.textContent = "CRC: Loading…";
+  buildCards();
+  badge(0);
+  log(`Fetching ${SERIES.length} indicators (last 10y window)…`);
 
-  cards.innerHTML = ""; // reset cards
-  const start = Date.now();
-  log(`Fetching ${set.length} indicators (parallel, race proxies)…`);
+  const tasks = SERIES.map(async s=>{
+    const card = document.getElementById(`card-${s.id}`);
+    const vEl  = card.querySelector('[data-val]');
+    const mEl  = card.querySelector('[data-meta]');
+    const scEl = card.querySelector('[data-score]');
 
-  // Build card shells first for perceived speed
-  for (const s of set){
-    const div = document.createElement("div");
-    div.className = "card";
-    div.id = `card-${s.id}`;
-    div.innerHTML = `
-      <h3>${s.name} <a class="id" href="https://fred.stlouisfed.org/series/${s.id}" target="_blank" rel="noreferrer">${s.id}</a></h3>
-      <div class="val">—</div>
-      <div class="meta">—</div>
-      <div class="score">score —</div>`;
-    cards.appendChild(div);
-  }
+    try{
+      const url = fredURL(s.id, key);
+      const data = await fetchRace(url, mode);
+      if(!data || !Array.isArray(data.observations)) throw new Error('bad response');
 
-  // Fetch in chunks for stability (concurrency 8)
-  const chunk = 8;
-  let results = [];
-  for (let i=0;i<set.length;i+=chunk){
-    const slice = set.slice(i,i+chunk);
-    const batch = await Promise.allSettled(slice.map(s=>FRED(s.id, key).then(j=>({s,j}))));
-    results.push(...batch);
-  }
+      // numeric observations
+      const obs = data.observations.map(o=>({ date:o.date, value: Number(o.value) }))
+        .filter(o => isFinite(o.value));
+      if (!obs.length) throw new Error('no numeric observations');
 
-  let scores = [];
-  for (const r of results){
-    if (r.status !== "fulfilled"){ log("× load failed"); continue; }
-    const {s,j} = r.value;
-    const series = j && j.observations ? j.observations : [];
-    const win = windowLast10Y(series);
-    const latest = (function(){
-      for (let i=series.length-1;i>=0;i--){
-        const v = parseVal(series[i].value);
-        if (Number.isFinite(v)) return {v, d: series[i].date};
-      }
-      return {v:NaN,d:"—"};
-    })();
+      const latest = obs[obs.length-1]; // already requested only recent 11y+ window
+      const { pct } = percentileLast10y(obs, latest.value);
+      let score = pct;
+      if (s.invert) score = 100 - pct;
 
-    const pr = percentileRank(win, latest.v); // 0..100
-    const risk = s.invert ? (Number.isNaN(pr)?NaN:(100-pr)) : pr;
+      vEl.textContent = s.unit ? `${fmt(latest.value, s.decimals)}${s.unit}` : fmt(latest.value, s.decimals);
+      mEl.textContent = `${latest.date}`;
+      scEl.textContent = `score ${isFinite(score)? Math.round(score) : '—'}`;
+      card.dataset.score = isFinite(score)? score : '';
 
-    // card update
-    const el = $(`#card-${s.id}`);
-    if (el){
-      el.querySelector(".val").textContent = isNaN(latest.v)? "—" : fmtNum(latest.v);
-      el.querySelector(".meta").textContent = latest.d && !isNaN(pr)
-        ? `${latest.d} • score ${risk}`
-        : (latest.d ? `${latest.d} • score —` : "—");
-      el.querySelector(".score").textContent = Number.isNaN(risk) ? "score —" : `score ${risk}`;
+      log(`✓ ${s.id} OK`);
+    }catch(e){
+      vEl.textContent = '—';
+      mEl.textContent = 'insufficient data';
+      scEl.textContent = 'score —';
+      card.dataset.score = '';
+      log(`✗ ${s.id} failed: ${e.message||e}`);
     }
+  });
 
-    if (!Number.isNaN(risk)) scores.push(risk);
-    log(`✓ ${s.id} via proxy OK`);
-  }
+  await Promise.allSettled(tasks);
 
-  const took = ((Date.now()-start)/1000).toFixed(1);
-  log(`Done in ${took}s.`);
-
-  const crc = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : NaN;
-  const tone = Number.isNaN(crc) ? "red" : colorFor(crc);
-  crcEl.className = `badge ${tone}`;
-  crcEl.textContent = Number.isNaN(crc) ? "CRC: error (no data)" : `CRC: ${crc} — ${tone.toUpperCase()}`;
+  // CRC average
+  const scores = Array.from(document.querySelectorAll('[id^=card-]'))
+    .map(c=>parseFloat(c.dataset.score))
+    .filter(v=>isFinite(v));
+  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length) : NaN;
+  badge(isFinite(avg)? avg : 0);
+  log(`Done. ${scores.length}/${SERIES.length} series contributed to CRC.`);
 }
 
-// auto-run once if a key is already saved
-if (keyEl.value.trim().length===32){ run(); }
+/* -------------------- boot -------------------- */
+(function init(){
+  buildCards();
+  // preload saved key
+  const saved = localStorage.getItem('fred_api_key');
+  if (saved) $("#apiKey").value = saved;
+  $("#runBtn").addEventListener('click', run);
+})();
 </script>
 </body>
 </html>
