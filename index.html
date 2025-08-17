@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Crash RAG Composite — 50-Indicator Build</title>
+<title>Crash RAG Composite — Turbo</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
   :root{
@@ -13,15 +13,11 @@
   header{padding:16px 12px;border-bottom:1px solid var(--b);text-align:center}
   h1{margin:0;font-size:22px}
   .wrap{max-width:1100px;margin:0 auto;padding:18px 14px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center}
   input,select{padding:10px 12px;border-radius:8px;border:1px solid var(--b);background:#0e1733;color:#cfe1ff}
   .btn{padding:10px 14px;border-radius:8px;border:1px solid var(--b);background:#1b2553;color:#fff;cursor:pointer}
   .badge{display:inline-block;padding:16px 24px;border-radius:14px;font-weight:800;letter-spacing:.2px;margin:14px 0}
   .g{background:var(--ok)} .a{background:var(--warn)} .r{background:var(--bad)} .x{background:#444}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:10px}
-  .card{background:var(--panel);border:1px solid var(--b);border-radius:12px;padding:12px}
-  .card h3{margin:0 0 6px 0;font-size:15px}
-  .log{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;background:var(--panel2);border:1px solid var(--b);border-radius:12px;padding:12px;min-height:120px}
   table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
   th,td{border-bottom:1px solid var(--b);padding:8px 6px;vertical-align:top}
   th{color:#c7d5ff;text-align:left}
@@ -29,36 +25,42 @@
   .muted{color:var(--muted)}
   .right{text-align:right}
   .small{font-size:12px}
+  .log{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;background:var(--panel2);border:1px solid var(--b);border-radius:12px;padding:12px;min-height:100px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+  .card{background:var(--panel);border:1px solid var(--b);border-radius:12px;padding:12px}
+  .card h3{margin:0 0 6px 0;font-size:15px}
 </style>
 </head>
 <body>
-<header><h1>Crash RAG Composite — United States</h1></header>
+<header><h1>Crash RAG Composite — United States (Turbo)</h1></header>
 
 <div class="wrap">
-  <div class="row" style="justify-content:center;margin-bottom:8px">
+  <div class="row">
     <input id="fredKey" placeholder="FRED API key (32 chars)" style="min-width:320px" />
     <select id="scope">
-      <option value="core" selected>Core set (stable on free proxies)</option>
-      <option value="full">All ~50 indicators (slower; may throttle)</option>
+      <option value="core" selected>Core (fast, reliable)</option>
+      <option value="full">Full (~50 indicators)</option>
     </select>
     <button id="run" class="btn">Run / Refresh</button>
   </div>
+
   <div id="crc" class="badge x">CRC: Loading…</div>
 
-  <div class="cards">
+  <div class="grid">
     <div class="card">
       <h3>Notes</h3>
       <div class="small">
-        Risk score = latest value’s <b>percentile vs last 10y</b> (or available history).  
-        If <span class="chip">invert</span> = true, higher=more risk (e.g., jobless claims, credit spreads).  
-        Composite = average of available series (equal weights).
+        Risk = latest value’s <b>percentile vs last 10y</b> (or available window).  
+        <span class="chip">invert</span> means higher value = higher crash risk.  
+        Composite = simple average of available series.
       </div>
     </div>
     <div class="card">
-      <h3>Status</h3>
+      <h3>Speed</h3>
       <div class="small">
-        Proxies tried: <code>cors.isomorphic-git.org</code> → <code>api.allorigins.win</code> → <code>thingproxy.freeboard.io</code><br/>
-        To speed up and avoid throttling, use a tiny serverless proxy later (Netlify/Workers).
+        Parallel fetch (8 at a time). Each series races proxies:  
+        <code>cors.isomorphic-git.org</code> • <code>api.allorigins.win</code> •
+        <code>thingproxy.freeboard.io</code> • <code>api.codetabs.com</code>.
       </div>
     </div>
     <div class="card">
@@ -69,217 +71,218 @@
 
   <table id="tbl">
     <thead>
-      <tr>
-        <th>Series</th><th>ID</th><th class="right">Latest</th><th>Date</th><th class="right">Score</th><th>Proxy</th>
-      </tr>
+      <tr><th>Series</th><th>ID</th><th class="right">Latest</th><th>Date</th><th class="right">Score</th><th>Proxy</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
 <script>
-/* ===================== CONFIG ===================== */
+/* =================== CONFIG (fast) =================== */
 const DEFAULT_KEY = "b78d7171c0fc257622597099f88fa7f7"; // your key
-const YEARS_BACK = 10;               // lookback for percentile
-const TIMEOUT_MS = 10000;            // per proxy attempt
-const DELAY_BETWEEN_CALLS_MS = 350;  // avoid hammering free proxies
-const USE_ALL_50 = false;            // set true to try all ~50 by default
+const YEARS_BACK = 10;
+const REQ_TIMEOUT_MS = 5000;     // short timeouts
+const CONCURRENCY = 8;           // parallel fetches
+const USE_ALL_50 = false;        // default scope on load
 
-// Minimal known-good “core” indicators (safer with free proxies)
+// Core set (fast + representative)
 const CORE = [
   { id:"UNRATE",     name:"Unemployment rate",                invert:true },
-  { id:"ICSA",       name:"Initial jobless claims (weekly)",  invert:true },
-  { id:"CPIAUCSL",   name:"CPI (headline, index)",            invert:true },
-  { id:"CPILFESL",   name:"Core CPI (ex-food/energy)",        invert:true },
-  { id:"PCEPI",      name:"PCE price index",                  invert:true },
+  { id:"ICSA",       name:"Initial jobless claims (wkly)",    invert:true },
+  { id:"CPIAUCSL",   name:"CPI (headline)",                   invert:true },
+  { id:"CPILFESL",   name:"Core CPI",                         invert:true },
+  { id:"PCEPI",      name:"PCE prices",                       invert:true },
   { id:"INDPRO",     name:"Industrial production",            invert:false },
-  { id:"TCU",        name:"Capacity utilization",             invert:true },   // high util can be late-cycle risk
+  { id:"TCU",        name:"Capacity utilization",             invert:true },
   { id:"RSAFS",      name:"Retail sales (advance)",           invert:false },
   { id:"HOUST",      name:"Housing starts",                   invert:false },
   { id:"PERMIT",     name:"Building permits",                 invert:false },
-  { id:"SP500",      name:"S&P 500 index",                    invert:false },
+  { id:"SP500MN",    name:"S&P 500 (monthly avg)",            invert:false }, // lighter & faster than SP500 daily
   { id:"VIXCLS",     name:"VIX index",                        invert:true },
-  { id:"T10Y3M",     name:"10Y-3M spread",                    invert:true },   // neg inversion = higher risk
+  { id:"T10Y3M",     name:"10Y-3M spread",                    invert:true },
   { id:"T10Y2Y",     name:"10Y-2Y spread",                    invert:true },
-  { id:"DGS10",      name:"10-year Treasury yield",           invert:true },
+  { id:"DGS10",      name:"10Y Treasury yield",               invert:true },
   { id:"BAMLH0A0HYM2", name:"ICE BofA HY OAS",                invert:true },
   { id:"STLFSI2",    name:"St. Louis Financial Stress",       invert:true },
-  { id:"NFCI",       name:"Chicago Fed Financial Conditions", invert:true },
+  { id:"NFCI",       name:"Chicago Fed Fin. Conditions",      invert:true },
   { id:"UMCSENT",    name:"UMich consumer sentiment",         invert:false },
-  { id:"DTWEXBGS",   name:"Trade-weighted broad USD",         invert:true },
+  { id:"DTWEXBGS",   name:"Trade-weighted USD (broad)",       invert:true },
 ];
 
-// Expanded list to ~50 (some may occasionally miss data; code skips safely)
-const FULL = [
-  ...CORE,
-  { id:"PAYEMS",     name:"Nonfarm payrolls",                 invert:false },
-  { id:"CSUSHPINSA", name:"Case-Shiller home price idx",      invert:false },
-  { id:"MORTGAGE30US",name:"30-yr mortgage rate",             invert:true },
-  { id:"DCOILWTICO", name:"WTI crude oil",                    invert:true },   // inflationary impulse
-  { id:"GOLDAMGBD228NLBM", name:"Gold (London AM USD)",       invert:true },
-  { id:"NASDAQCOM",  name:"NASDAQ Composite",                 invert:false },
-  { id:"WILL5000INDFC", name:"Wilshire 5000",                 invert:false },
-  { id:"AAA",        name:"Moody’s AAA yield",                invert:true },
-  { id:"BAA",        name:"Moody’s BAA yield",                invert:true },
-  { id:"BAA10Y",     name:"BAA – 10Y Treasury spread",        invert:true },
-  { id:"TB3MS",      name:"3-Month T-Bill",                   invert:true },
-  { id:"DGS2",       name:"2-year Treasury yield",            invert:true },
-  { id:"CP3M",       name:"Commercial paper 3-mo",            invert:true },
-  { id:"H8B1058NCBCMG", name:"Bank credit (weekly)",          invert:true },
-  { id:"TOTALSA",    name:"Light vehicle sales (SAAR)",       invert:false },
-  { id:"CUSR0000SAS", name:"CPI goods less food/energy",      invert:true },
-  { id:"PPIACO",     name:"PPI all commodities",              invert:true },
-  { id:"BUSLOANS",   name:"Commercial & industrial loans",    invert:true },
-  { id:"CPILFENS",   name:"Core CPI (NSA)",                   invert:true },
-  { id:"HDTGPDUSQ163N", name:"Delinquencies: C&I loans",      invert:true },
-  { id:"HDTGPDUSQ163N", name:"Delinquencies: C&I loans",      invert:true },
-  { id:"PCE",        name:"Personal consumption exp.",        invert:false },
-  { id:"PCECC96",    name:"Real PCE",                         invert:false },
-  { id:"GDPC1",      name:"Real GDP",                         invert:false },
-  { id:"CPALTT01USM657N", name:"OECD CPI (US)",               invert:true },
-  { id:"HOUSTMW",    name:"Housing starts Midwest",           invert:false },
-  { id:"HOUSTNE",    name:"Housing starts Northeast",         invert:false },
-  { id:"HOUSTW",     name:"Housing starts West",              invert:false },
-  { id:"CES0600000008", name:"Avg hours manufacturing",       invert:true },
-  { id:"IC4WSA",     name:"4-wk avg initial claims",          invert:true },
-  { id:"CCSA",       name:"Continued claims",                 invert:true },
-  { id:"DSPIC96",    name:"Real disposable income",           invert:false },
-  { id:"NAPM",       name:"ISM Manufacturing PMI",            invert:true },   // high→late-cycle risk; treat as risk
-  { id:"NAPMS",      name:"ISM Services PMI",                 invert:true },
-  { id:"HOUST5F",    name:"Housing starts 5+ units",          invert:false },
-  { id:"PERMIT1",    name:"Permits 1-unit",                   invert:false },
-  { id:"PERMIT5",    name:"Permits 5+ units",                 invert:false },
-  { id:"CIVPART",    name:"Labor participation",              invert:false },
-  { id:"U6RATE",     name:"U-6 underemployment rate",         invert:true },
-  { id:"PNFI",       name:"Nonres fixed investment",          invert:false },
-  { id:"HOUSTMW",    name:"Housing starts Midwest",           invert:false },
-  { id:"HOUSTSA",    name:"Housing starts (SA)",              invert:false },
-  { id:"HOUSTAUTH",  name:"Housing authorized",               invert:false },
-  { id:"T5YIE",      name:"5-Y TIPS breakeven",               invert:true },
-  { id:"T10YIE",     name:"10-Y TIPS breakeven",              invert:true },
-  { id:"BAMLCC0A0CM",name:"ICE BofA IG OAS",                  invert:true }
-].filter((v,i,a)=>a.findIndex(t=>t.id===v.id)===i); // dedupe if overlaps
+// Add more to reach ~50 (kept, but some can be flaky via free proxies)
+const FULL_EXTRA = [
+  { id:"PAYEMS", name:"Nonfarm payrolls", invert:false },
+  { id:"CSUSHPINSA", name:"Case-Shiller HPI", invert:false },
+  { id:"MORTGAGE30US", name:"30y mortgage rate", invert:true },
+  { id:"DCOILWTICO", name:"WTI crude", invert:true },
+  { id:"GOLDAMGBD228NLBM", name:"Gold (London AM USD)", invert:true },
+  { id:"NASDAQCOM", name:"NASDAQ Composite", invert:false },
+  { id:"WILL5000INDFC", name:"Wilshire 5000", invert:false },
+  { id:"AAA", name:"Moody’s AAA yield", invert:true },
+  { id:"BAA", name:"Moody’s BAA yield", invert:true },
+  { id:"BAA10Y", name:"BAA – 10Y spread", invert:true },
+  { id:"TB3MS", name:"3-mo T-Bill", invert:true },
+  { id:"DGS2", name:"2Y Treasury", invert:true },
+  { id:"CP3M", name:"Commercial paper 3m", invert:true },
+  { id:"H8B1058NCBCMG", name:"Bank credit (wkly)", invert:true },
+  { id:"TOTALSA", name:"Light vehicle sales", invert:false },
+  { id:"PPIACO", name:"PPI all commodities", invert:true },
+  { id:"BUSLOANS", name:"C&I loans", invert:true },
+  { id:"IC4WSA", name:"Initial claims (4wk avg)", invert:true },
+  { id:"CCSA", name:"Continued claims", invert:true },
+  { id:"DSPIC96", name:"Real disposable income", invert:false },
+  { id:"NAPM", name:"ISM Manufacturing PMI", invert:true },
+  { id:"NAPMS", name:"ISM Services PMI", invert:true },
+  { id:"T5YIE", name:"5Y TIPS breakeven", invert:true },
+  { id:"T10YIE", name:"10Y TIPS breakeven", invert:true },
+  { id:"BAMLCC0A0CM", name:"IG OAS", invert:true },
+];
+const FULL = [...CORE, ...FULL_EXTRA];
 
-/* ===================== RUNTIME ===================== */
-const $ = sel => document.querySelector(sel);
+/* =================== UTILITIES =================== */
+const $ = s => document.querySelector(s);
 const log = m => { const el=$("#log"); el.textContent += (el.textContent? "\n":"") + m; el.scrollTop = el.scrollHeight; };
-const setCRC = (txt, cls) => { const el=$("#crc"); el.textContent = txt; el.className = "badge " + cls; };
+const setCRC = (t,c) => { const el=$("#crc"); el.textContent=t; el.className="badge "+c; };
+const fredURL = (id,k)=>`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${k}&file_type=json`;
 
-function fredObsURL(id, key){ return `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json`; }
-function proxiesFor(url){
+function proxyList(url){
   return [
     `https://cors.isomorphic-git.org/${url}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://thingproxy.freeboard.io/fetch/${url}`
+    `https://thingproxy.freeboard.io/fetch/${url}`,
+    `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
   ];
 }
-async function fetchWithTimeout(u, ms=TIMEOUT_MS){
-  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), ms);
-  try { return await fetch(u, {signal:ctl.signal, cache:"no-store"}); }
-  finally { clearTimeout(t); }
-}
-async function getJSONViaProxies(url){
-  let lastErr;
-  for (const p of proxiesFor(url)){
+
+// race all proxies for the same URL; abort losers when one wins
+async function fetchJSONRace(url){
+  const controllers = [];
+  const mk = (pUrl)=>new Promise(async (resolve, reject)=>{
+    const ctl = new AbortController(); controllers.push(ctl);
     try{
-      const host = new URL(p).host;
-      const res = await fetchWithTimeout(p);
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const txt = await res.text();
-      const json = JSON.parse(txt);
-      return { json, proxy: host };
-    }catch(e){ lastErr = e; }
+      const r = await fetch(pUrl, { signal: ctl.signal, cache:"no-store" });
+      if(!r.ok) return reject(new Error(`HTTP ${r.status}`));
+      const txt = await r.text();
+      try{ resolve({ data: JSON.parse(txt), proxy: new URL(pUrl).host }); }
+      catch{ reject(new Error("Bad JSON")); }
+    }catch(e){ reject(e); }
+  });
+
+  // timeout wrapper
+  const timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")), REQ_TIMEOUT_MS));
+
+  try{
+    const res = await Promise.any([timeout, ...proxyList(url).map(mk)]);
+    // abort all other in-flight requests
+    controllers.forEach(c=>{ try{c.abort();}catch{} });
+    return res;
+  }catch(e){
+    controllers.forEach(c=>{ try{c.abort();}catch{} });
+    throw e;
   }
-  throw lastErr || new Error("proxy chain failed");
 }
 
 function pctRank(sample, x){
-  if(!sample.length) return NaN;
-  const n = sample.length;
-  let below = 0, equal = 0;
-  for(const v of sample){ if(v < x) below++; else if(v === x) equal++; }
-  return ((below + 0.5*equal) / n) * 100;
+  if(sample.length===0) return NaN;
+  let below=0, equal=0;
+  for(const v of sample){ if(v<x) below++; else if(v===x) equal++; }
+  return ((below + 0.5*equal)/sample.length)*100;
+}
+function last10Y(obs){
+  const cut = new Date(); cut.setFullYear(cut.getFullYear()-YEARS_BACK);
+  return obs.filter(o => new Date(o.date) >= cut);
+}
+function fmt(x){ return (x===null||x===undefined) ? "—" : (Math.abs(x)>=1000 ? x.toLocaleString() : x.toString()); }
+
+/* =========== PARALLEL FETCH WITH CONCURRENCY =========== */
+async function mapPool(items, limit, worker){
+  const out = Array(items.length);
+  let i=0, active=0, done=0;
+  return await new Promise((resolve)=>{
+    const runNext = ()=>{
+      if(done===items.length) return resolve(out);
+      while(active<limit && i<items.length){
+        const idx=i++, item=items[idx]; active++;
+        (async()=>{
+          try{ out[idx]=await worker(item, idx); }
+          catch(e){ out[idx]={error:e.message}; }
+          active--; done++; runNext();
+        })();
+      }
+    };
+    runNext();
+  });
 }
 
-function withinYears(observations, years=10){
-  const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear()-years);
-  return observations.filter(o => new Date(o.date) >= cutoff);
+/* =================== MAIN =================== */
+async function fetchSeriesLatest(series, key){
+  const url = fredURL(series.id, key);
+  const { data, proxy } = await fetchJSONRace(url);
+  // parse & window
+  const all = (data.observations||[])
+    .map(o => ({ date:o.date, v:o.value==="."? NaN : parseFloat(o.value) }))
+    .filter(x => Number.isFinite(x.v));
+  const win = (last10Y(all).length>=6 ? last10Y(all) : all);
+  if(win.length<6) throw new Error("insufficient data");
+  const latest = win[win.length-1];
+  const sample = win.slice(0,-1).map(x=>x.v);
+  let p = pctRank(sample, latest.v);            // 0..100
+  if(!series.invert) p = 100 - p;               // flip if higher=safer
+  const score = Math.max(0, Math.min(100, Math.round(p)));
+  return { ok:true, id:series.id, name:series.name, val:latest.v, date:latest.date, score, proxy };
 }
 
-function fmt(x){ return (Math.abs(x)>=1000 ? x.toLocaleString() : x.toString()); }
-
-/* === MAIN === */
 async function run(){
   const key = ($("#fredKey").value || DEFAULT_KEY).trim();
   $("#fredKey").value = key;
   $("#tbl tbody").innerHTML = "";
   $("#log").textContent = "";
   setCRC("CRC: Loading…","x");
-  const SCOPE = ($("#scope").value === "full" || USE_ALL_50) ? FULL : CORE;
 
-  log(`Starting… using ${SCOPE.length} indicators`);
-  log(`Key: ${key.length===32 ? "OK (32 chars)" : `len=${key.length}`}`);
+  const SCOPE = ($("#scope").value==="full" || USE_ALL_50) ? FULL : CORE;
+  log(`Fetching ${SCOPE.length} indicators (concurrency ${CONCURRENCY})`);
 
-  const rows = [];
-  const scores = [];
-  for (const s of SCOPE){
-    const url = fredObsURL(s.id, key);
-    log(`Fetching ${s.id} — ${s.name}`);
-    let proxyUsed = "-", latestVal = null, latestDate = "-", risk = NaN;
+  const results = await mapPool(SCOPE, CONCURRENCY, async (s)=>{
     try{
-      const { json, proxy } = await getJSONViaProxies(url);
-      proxyUsed = proxy;
-      let obs = json.observations || [];
-      // prefer 10y window if possible
-      const windowObs = withinYears(obs, YEARS_BACK);
-      const series = (windowObs.length >= 6 ? windowObs : obs)
-        .map(o => ({ d:o.date, v: (o.value==="."? NaN: parseFloat(o.value)) }))
-        .filter(o => Number.isFinite(o.v));
-      if(series.length < 6) throw new Error("insufficient data");
-      latestVal  = series[series.length-1].v;
-      latestDate = series[series.length-1].d;
-      const sample = series.slice(0,-1).map(x=>x.v); // exclude latest for rank
-      let p = pctRank(sample, latestVal);            // 0–100 risk percentile
-      if(!s.invert) p = 100 - p;                     // flip if higher=safer
-      risk = Math.max(0, Math.min(100, Math.round(p)));
-      scores.push(risk);
-      rows.push({ name:s.name, id:s.id, val:latestVal, date:latestDate, score:risk, proxy:proxyUsed, ok:true });
+      const r = await fetchSeriesLatest(s, key);
+      log(`✓ ${s.id} via ${r.proxy}`);
+      return r;
     }catch(e){
-      rows.push({ name:s.name, id:s.id, val:"—", date:"—", score:"—", proxy:proxyUsed, ok:false, err:e.message });
-      log(`  × ${s.id} failed: ${e.message}`);
+      log(`× ${s.id}: ${e.message}`);
+      return { ok:false, id:s.id, name:s.name, val:"—", date:"—", score:"—", proxy:"—", err:e.message };
     }
-    await new Promise(r=>setTimeout(r, DELAY_BETWEEN_CALLS_MS));
-  }
+  });
 
   // table
   const tb = $("#tbl tbody");
-  for(const r of rows){
+  const scores = [];
+  for(const r of results){
+    if(r.ok) scores.push(r.score);
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${r.name}${r.ok? "": ` <span class="muted small">(${r.err})</span>`}</td>
+      <td>${r.name}${r.ok?"":` <span class="muted small">(${r.err})</span>`}</td>
       <td><span class="chip">${r.id}</span></td>
-      <td class="right">${r.val==="—" ? "—" : fmt(r.val)}</td>
+      <td class="right">${r.val==="—"?"—":fmt(r.val)}</td>
       <td>${r.date}</td>
-      <td class="right">${r.score==="—" ? "—" : r.score}</td>
-      <td>${r.proxy || "—"}</td>
+      <td class="right">${r.score==="—"?"—":r.score}</td>
+      <td>${r.proxy||"—"}</td>
     `;
     tb.appendChild(tr);
   }
 
-  // composite
   if(!scores.length){
     setCRC("CRC: ERROR (no data)","r");
-    log("No usable series. Proxies throttled or key issue.");
+    log("No usable series (proxy throttling or key issue).");
     return;
   }
   const comp = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-  let cls = comp < 40 ? "g" : (comp <= 70 ? "a" : "r");
+  const cls = comp<40 ? "g" : (comp<=70 ? "a" : "r");
   setCRC(`CRC: ${comp} — ${cls==="g"?"GREEN":cls==="a"?"AMBER":"RED"}`, cls);
   log("Done.");
 }
 
-/* === Wire-up === */
-document.addEventListener("DOMContentLoaded", () => {
+/* Wire-up */
+document.addEventListener("DOMContentLoaded", ()=>{
   $("#fredKey").value = DEFAULT_KEY;
   $("#scope").value = USE_ALL_50 ? "full" : "core";
   run();
