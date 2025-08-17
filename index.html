@@ -2,289 +2,395 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>The Marshall Stock Market Crash Composite Indicator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://api.stlouisfed.org">
 <style>
   :root{
-    --bg:#0e1420; --panel:#121a28; --muted:#94a3b8; --text:#e6edf6;
-    --green:#1fc26b; --amber:#f6a723; --red:#f25656; --track:#273043; --brand:#8ecae6;
-    --card-radius:16px; --gap:16px;
+    --bg:#0e1621;--panel:#121b26;--soft:#1a2330;--muted:#98a2b3;
+    --text:#e6edf3;--brand:#8fb3ff;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+    --chip:#243142;--card:#0f1823;--ring:#f59e0b; /* single-color ring */
   }
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
-  header h1{margin:0 0 8px;font-size:clamp(26px,5.5vw,36px);line-height:1.1}
-  header p{margin:0 0 14px;color:var(--muted)}
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 14px}
-  input,select,button{border-radius:12px;border:1px solid #1f2937;background:#0c1220;color:var(--text);padding:12px 14px}
-  input{flex:1;min-width:220px}
-  button{background:#3371ff;border-color:#3371ff;font-weight:700}
-  .panel{background:var(--panel);border:1px solid #1e293b;border-radius:var(--card-radius);padding:16px;margin-top:var(--gap)}
+  html,body{background:var(--bg);color:var(--text);font:400 16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:22px 16px 80px}
+  header{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+  header img{width:54px;height:54px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #1f2937}
+  h1{font-size:28px;line-height:1.1;margin:0}
+  p.lead{margin:6px 0 0;color:var(--muted)}
+  .row{display:flex;gap:10px;align-items:center;margin:14px 0 6px}
+  input,select,button{font:600 16px/1 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+  input[type=text]{flex:1;min-width:0;background:var(--soft);border:1px solid #233045;color:#bcd2ff;border-radius:12px;padding:14px 12px}
+  select{background:var(--soft);border:1px solid #233045;color:#cbd5e1;border-radius:12px;padding:12px}
+  button{background:#3b82f6;border:0;color:white;border-radius:12px;padding:14px 18px}
+  .card{background:var(--panel);border:1px solid #203045;border-radius:16px;padding:18px;margin-top:14px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
   .flex{display:flex;gap:16px;align-items:center}
-  .crcBadge{font-weight:800;background:#1f2937;padding:8px 12px;border-radius:12px}
-  .crcBadge.green{background:color-mix(in oklab,var(--green) 25%,#1f2937)}
-  .crcBadge.amber{background:color-mix(in oklab,var(--amber) 25%,#1f2937)}
-  .crcBadge.red{background:color-mix(in oklab,var(--red) 25%,#1f2937)}
-  /* Gauge (solid color) */
-  .gauge{position:relative;width:96px;height:96px}
-  .gauge svg{transform:rotate(-90deg)}
-  .gTrack{stroke:var(--track);opacity:.9}
-  .gBar{stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .2s ease}
-  .gauge .val{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:20px}
-  .gBar.green{stroke:var(--green)}
-  .gBar.amber{stroke:var(--amber)}
-  .gBar.red{stroke:var(--red)}
-  .key li{display:flex;gap:10px;margin:8px 0}
-  .dot{width:10px;height:10px;border-radius:50%}
-  .grid{display:grid;grid-template-columns:1fr;gap:12px}
-  @media (min-width:640px){ .grid{grid-template-columns:1fr 1fr} }
-  .card{background:#0f1625;border:1px solid #1f2a3b;border-radius:14px;padding:14px}
-  .id{display:inline-block;background:#24324a;color:#aab7cf;border-radius:999px;padding:4px 8px;margin-left:8px;font-size:12px}
+  .crcBadge{background:#3a2f25;border:1px solid #4b3c2d;color:#fbd38d;border-radius:14px;padding:10px 14px;font-weight:700}
+  .crcText b{font-weight:800}
+  .ring{position:relative;width:110px;height:110px;min-width:110px}
+  .ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .ring .label{position:absolute;inset:0;display:grid;place-items:center;font-size:28px;font-weight:800}
+  .h2{font-size:22px;font-weight:800;margin:0 0 10px}
   .muted{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .ind{background:var(--card);border:1px solid #1d2a3a;border-radius:14px;padding:14px}
+  .ind .name{font-weight:800}
+  .chip{display:inline-block;background:var(--chip);color:#cbd5e1;border-radius:999px;padding:4px 8px;margin-left:8px;font-size:12px}
+  .val{font-size:32px;font-weight:900;margin:6px 0}
+  .meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
+  .score{font-weight:700}
+  .key li{margin:6px 0}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:6px}
+  .g{background:var(--ok)} .y{background:var(--warn)} .r{background:var(--bad)}
+  @media (min-width:620px){
+    .grid{grid-template-columns:1fr 1fr}
+    .flexStack{display:flex;gap:16px}
+    .flexStack .left{flex:0 0 140px}
+    .flexStack .right{flex:1}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-    <p>U.S. crash-risk dashboard from 20+ economic &amp; market indicators.</p>
+    <img src="alba-seal.png" alt="Alba crest" onerror="this.style.display='none'">
+    <div>
+      <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+      <p class="lead">U.S. crash-risk dashboard from 20+ economic &amp; market indicators.</p>
+    </div>
   </header>
 
-  <div class="controls">
-    <input id="key" placeholder="YOUR_FRED_API_KEY" value="">
-    <select id="proxy">
-      <option value="auto" selected>Auto (race)</option>
+  <div class="row">
+    <input id="apiKey" type="text" placeholder="YOUR_FRED_API_KEY" />
+    <select id="mode">
+      <option value="auto">Auto (race)</option>
       <option value="codetabs">Codetabs</option>
       <option value="allorigins">AllOrigins</option>
-      <option value="isomorphic">Isomorphic CORS</option>
+      <option value="none">Direct (CORS ok)</option>
     </select>
-    <button id="run">Run / Refresh</button>
+    <button id="runBtn">Run / Refresh</button>
   </div>
 
-  <!-- CRC block -->
-  <section class="panel flex" id="crcPanel">
-    <div class="gauge" aria-label="CRC gauge">
-      <svg width="96" height="96" viewBox="0 0 100 100">
-        <circle class="gTrack" cx="50" cy="50" r="44" fill="none" stroke-width="10"/>
-        <circle id="gBar" class="gBar amber" cx="50" cy="50" r="44" fill="none" stroke-width="10"
-                stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
-      </svg>
-      <div class="val" id="gVal">–</div>
+  <!-- CRC / Gauge -->
+  <section class="card flexStack">
+    <div class="left">
+      <div class="ring" aria-label="CRC gauge">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="44" stroke="#233045" stroke-width="12" fill="none"></circle>
+          <circle id="crcArc" cx="50" cy="50" r="44" stroke="var(--ring)" stroke-linecap="round" stroke-width="12" fill="none" stroke-dasharray="0 276"></circle>
+        </svg>
+        <div id="crcValue" class="label">—</div>
+      </div>
     </div>
-    <div>
-      <div id="crcBadge" class="crcBadge amber">CRC: —</div>
-      <div class="muted" style="margin-top:6px">Composite = average of indicator percentiles vs last 10y (using sensible inverts).</div>
+    <div class="right">
+      <div class="flex">
+        <div style="font-weight:900;letter-spacing:.08em">CRC</div>
+        <div id="crcBadge" class="crcBadge">CRC: —</div>
+      </div>
+      <p id="crcNote" class="crcText muted" style="margin:.4rem 0 0">
+        Composite = average of indicator percentiles vs last 10y (using sensible inverts).
+      </p>
     </div>
   </section>
 
-  <!-- Exec summary -->
-  <section class="panel" id="summaryPanel">
-    <h2 style="margin:0 0 8px">Executive Summary</h2>
-    <p id="summary" class="muted" style="margin:0">Tap “Run / Refresh”.</p>
+  <!-- Executive Summary -->
+  <section class="card">
+    <h2 class="h2">Executive Summary</h2>
+    <p id="exec" class="muted" style="margin:8px 0 0">Paste your FRED API key and tap <b>Run / Refresh</b> to generate a summary.</p>
   </section>
 
   <!-- Indicators -->
-  <section class="panel">
-    <h2 style="margin:0 0 12px">Indicators</h2>
-    <div class="grid" id="cards"></div>
+  <section class="card">
+    <h2 class="h2">Indicators</h2>
+    <div id="indGrid" class="grid"></div>
   </section>
 
-  <!-- How to read -->
-  <section class="panel">
-    <h2 style="margin:0 0 10px">How to read the CRC (RAG)</h2>
-    <ul class="key" style="list-style:none;padding:0;margin:0">
-      <li><span class="dot" style="background:var(--green)"></span><strong>Green &lt; 40</strong><span class="muted"> — Indicators mostly sit in the lower half of their last-10y ranges.</span></li>
-      <li><span class="dot" style="background:var(--amber)"></span><strong>Amber 40–70</strong><span class="muted"> — Mixed/deteriorating signals. Tighten risk controls; add selective hedges.</span></li>
-      <li><span class="dot" style="background:var(--red)"></span><strong>Red &gt; 70</strong><span class="muted"> — Broad elevation vs last decade; emphasize capital preservation/liquidity.</span></li>
+  <!-- RAG key -->
+  <section class="card">
+    <h2 class="h2">How to read the CRC (RAG)</h2>
+    <ul class="key muted">
+      <li><span class="dot g"></span><b>Green &lt; 40</b> — Indicators mostly sit in the lower half of their last-10y ranges.</li>
+      <li><span class="dot y"></span><b>Amber 40–70</b> — Mixed/deteriorating signals. Tighten risk controls; add selective hedges.</li>
+      <li><span class="dot r"></span><b>Red &gt; 70</b> — Broad elevation vs last decade; emphasize capital preservation/liquidity.</li>
     </ul>
+    <p class="muted" style="margin-top:10px">CRC is a simple z/percentile blend; it’s a risk thermometer, not a timing signal.</p>
   </section>
 </div>
 
 <script>
-/* ---------- Config: series + formatting ---------- */
-const SERIES = [
-  // Yields & curve
-  { id:'DGS10',       name:'10Y Treasury yield',              invert:false, fmt:v=>(+v).toFixed(2)+'%' },
-  { id:'T10Y2Y',      name:'10Y–2Y spread',                   invert:true,  fmt:v=>(+v).toFixed(2)+'%' },
-  { id:'T10Y3M',      name:'10Y–3M spread',                   invert:true,  fmt:v=>(+v).toFixed(2)+'%' },
+/* --------------- helpers --------------- */
+const $ = s => document.querySelector(s);
+const fmtPct = (x,dec=2)=> (x==null||isNaN(x)) ? '—' : (+(x)).toFixed(dec).replace(/^-?0\.00$/,'0.00')+'%';
+const fmtNum = x => (x==null||isNaN(x)) ? '—' :
+  (+x>=1000 ? Intl.NumberFormat('en-US').format(Math.round(+x)) : (+x).toString());
+const ymd = s => s?.slice(0,10) || '—';
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-  // Credit & stress
-  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',                 invert:false, fmt:v=>(+v).toFixed(2) },
-  { id:'STLFSI4',     name:'St. Louis Financial Stress (v4)', invert:false, fmt:v=>(+v).toFixed(4) },
-  { id:'NFCI',        name:'Chicago Fed Financial Conditions', invert:false, fmt:v=>(+v).toFixed(5) },
-
-  // Equities & vol
-  { id:'SP500',       name:'S&P 500 index',                   invert:false, fmt:v=>(+v).toLocaleString() },
-  { id:'SP500MN',     name:'S&P 500 (monthly avg)',           invert:false, fmt:v=>(+v).toFixed(1) },
-  { id:'VIXCLS',      name:'VIX index',                       invert:false, fmt:v=>(+v).toFixed(2) },
-
-  // Labor
-  { id:'UNRATE',      name:'Unemployment rate',               invert:false, fmt:v=>(+v).toFixed(1) },
-  { id:'ICSA',        name:'Initial jobless claims (wkly)',   invert:false, fmt:v=>(+v).toLocaleString() },
-
-  // Prices
-  { id:'CPIAUCSL',    name:'CPI (headline)',                  invert:false, fmt:v=>(+v).toFixed(3) },
-  { id:'CPILFESL',    name:'Core CPI',                        invert:false, fmt:v=>(+v).toFixed(3) },
-  { id:'PCEPI',       name:'PCE prices',                      invert:false, fmt:v=>(+v).toFixed(3) },
-
-  // Real economy (higher = safer ⇒ invert)
-  { id:'INDPRO',      name:'Industrial production',           invert:true,  fmt:v=>(+v).toFixed(3) },
-  { id:'TCU',         name:'Capacity utilization',            invert:true,  fmt:v=>(+v).toFixed(2) },
-  { id:'RSAFS',       name:'Retail sales (advance)',          invert:true,  fmt:v=>(+v).toLocaleString() },
-  { id:'HOUST',       name:'Housing starts',                  invert:true,  fmt:v=>(+v).toLocaleString() },
-  { id:'PERMIT',      name:'Building permits',                invert:true,  fmt:v=>(+v).toLocaleString() },
-
-  // Sentiment (lower = riskier ⇒ invert)
-  { id:'UMCSENT',     name:'UMich consumer sentiment',        invert:true,  fmt:v=>(+v).toFixed(1) },
-
-  // Dollar (stronger = tighter ⇒ treat as risk-up-when-high)
-  { id:'DTWEXBGS',    name:'Trade-weighted USD (broad)',      invert:false, fmt:v=>(+v).toFixed(4) }
-];
-
-/* ---------- Helpers ---------- */
-const $ = sel => document.querySelector(sel);
-const ringLen = 2*Math.PI*44;
-
-function rankPctile(arr, value){
-  // arr = array of numeric strings; value = latest numeric string
-  const xs = arr.filter(v=>v!=='.').map(x=>+x).sort((a,b)=>a-b);
-  if (!xs.length) return NaN;
-  const v = +value;
-  let idx = xs.findIndex(x=>v<=x);
-  if (idx<0) idx = xs.length-1;
-  const pct = 100*(idx/(xs.length-1 || 1));
-  return Math.max(0, Math.min(100, pct));
-}
-
-function ragColor(n){ return n>70 ? 'red' : n>=40 ? 'amber' : 'green'; }
-
-function setGauge(n){
-  const pct = isFinite(n)? Math.max(0,Math.min(100, n)) : 0;
-  const offset = ringLen*(1-pct/100);
-  const bar = $('#gBar'); const val = $('#gVal'); const badge = $('#crcBadge');
-  bar.style.strokeDasharray = ringLen;
-  bar.style.strokeDashoffset = offset;
-  bar.classList.remove('green','amber','red');
-  const cls = ragColor(n);
-  bar.classList.add(cls);
-  val.textContent = isFinite(n)? Math.round(n) : '–';
-  badge.textContent = isFinite(n)? `CRC: ${Math.round(n)} — ${cls.toUpperCase()}` : 'CRC: —';
-  badge.classList.remove('green','amber','red'); badge.classList.add(cls);
-}
-
-/* ---------- Fetch (proxy race) ---------- */
-const proxiers = {
-  codetabs:(url)=>`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-  allorigins:(url)=>`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  isomorphic:(url)=>`https://cors.isomorphic-git.org/${url}`,
+const proxies = {
+  codetabs: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  allorigins: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  none: u => u
 };
-
-async function fredSeries(id, key, prox='auto'){
-  const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json&observation_start=${new Date(Date.now()-31557600000*11).toISOString().slice(0,10)}&limit=100000`;
-  const urls = prox==='auto'
-    ? [proxiers.codetabs(base), proxiers.allorigins(base), proxiers.isomorphic(base)]
-    : [proxiers[prox]? proxiers[prox](base) : base];
-
-  // Race attempts
-  for (const u of urls){
-    try{
-      const r = await fetch(u, {mode:'cors'});
-      if (!r.ok) continue;
-      const j = await r.json();
-      if (j && j.observations && j.observations.length>1) return j;
-    }catch(e){}
-  }
-  throw new Error('Load failed');
+async function fetchWithRace(url, mode='auto'){
+  if(mode!=='auto') return fetch(proxies[mode]?.(url)||url).then(r=>r.ok?r.text():Promise.reject(r.status));
+  // race two reliable free proxies
+  const urls=[proxies.codetabs(url), proxies.allorigins(url)];
+  return await Promise.any(urls.map(u=>fetch(u).then(r=>r.ok?r.text():Promise.reject(r.status))));
 }
 
-/* ---------- UI build ---------- */
-function makeCard(s){
-  const el = document.createElement('div');
-  el.className = 'card';
+function percentile(arr, v){
+  const xs = arr.filter(x=>isFinite(x)).sort((a,b)=>a-b); if(!xs.length) return null;
+  let i = xs.findIndex(x=>x>v); if(i<0) i=xs.length;
+  // include equals
+  const le = xs.lastIndexOf(v); if(le>=0) i=le+1;
+  return Math.round(100*i/xs.length);
+}
+
+/* --------------- FRED --------------- */
+function fredURL(series, key, params={}){
+  const u = new URL('https://api.stlouisfed.org/fred/series/observations');
+  u.searchParams.set('series_id', series);
+  u.searchParams.set('api_key', key);
+  u.searchParams.set('file_type', 'json');
+  for(const [k,v] of Object.entries(params)) if(v!=null) u.searchParams.set(k,v);
+  return u.toString();
+}
+async function fredSeries(series, key, {start}={}){
+  const url = fredURL(series, key, start?{observation_start:start}: {});
+  const txt = await fetchWithRace(url, $('#mode').value);
+  const js = JSON.parse(txt);
+  const obs = (js.observations||[]).map(o=>({date:o.date,value: +o.value}));
+  return obs.filter(o=>isFinite(o.value));
+}
+
+/* --------------- Metadata --------------- */
+const SERIES = [
+  { id:'DGS10',     name:'10Y Treasury yield',          unit:'pct', invert:false, lowerIsRisk:false, recent:true },
+  { id:'T10Y2Y',    name:'10Y–2Y spread',               unit:'pct', invert:true,  lowerIsRisk:false, recent:true },
+  { id:'T10Y3M',    name:'10Y–3M spread',               unit:'pct', invert:true,  lowerIsRisk:false, recent:true },
+  { id:'BAMLH0A0HYM2', name:'ICE BofA HY OAS',          unit:'pct', invert:false, lowerIsRisk:false, recent:true },
+  { id:'STLFSI4',   name:'St. Louis Financial Stress (v4)', unit:'', invert:false, lowerIsRisk:false, recent:true },
+  { id:'NFCI',      name:'Chicago Fed Financial Conditions', unit:'', invert:false, lowerIsRisk:false, recent:true },
+  { id:'SP500',     name:'S&P 500 index',               unit:'',   invert:false, lowerIsRisk:false, recent:true },
+  { id:'VIXCLS',    name:'VIX index',                   unit:'',   invert:false, lowerIsRisk:false, recent:true },
+  { id:'UNRATE',    name:'Unemployment rate',           unit:'pct', invert:false, lowerIsRisk:false },
+  { id:'ICSA',      name:'Initial jobless claims (wkly)', unit:'', invert:false, lowerIsRisk:false },
+  { id:'CPIAUCSL',  name:'CPI (headline)',              unit:'',   invert:false, lowerIsRisk:false },
+  { id:'CPILFESL',  name:'Core CPI',                    unit:'',   invert:false, lowerIsRisk:false },
+  { id:'PCEPI',     name:'PCE prices',                  unit:'',   invert:false, lowerIsRisk:false },
+  { id:'INDPRO',    name:'Industrial production',       unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'TCU',       name:'Capacity utilization',        unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'RSAFS',     name:'Retail sales (advance)',      unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'HOUST',     name:'Housing starts',              unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'PERMIT',    name:'Building permits',            unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'UMCSENT',   name:'UMich consumer sentiment',    unit:'',   invert:false, lowerIsRisk:true  },
+  { id:'DTWEXBGS',  name:'Trade-weighted USD (broad)',  unit:'',   invert:false, lowerIsRisk:false },
+];
+/* Derived: Buffett Indicator (approx) -> WILSHIRE/GDP */
+const BUFFETT = { id:'BUFFETT', name:'“Buffett” valuation (Wilshire/GDP, approx.)', unit:'pct', derived:true, invert:false, lowerIsRisk:false };
+
+/* --------------- App --------------- */
+const state = { rows:[], crc:null };
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('FRED_KEY'); if(saved) $('#apiKey').value = saved;
+  $('#runBtn').addEventListener('click', run);
+});
+
+function setGauge(score,color){
+  const arc = $('#crcArc'); const total = 2*Math.PI*44; // circumference
+  const len = clamp(total * (score/100), 0, total);
+  arc.setAttribute('stroke-dasharray', `${len} ${total-len}`);
+  arc.setAttribute('stroke', color);
+  $('#crcValue').textContent = score ?? '—';
+}
+
+function ragColor(s){
+  if(s==null) return '#64748b';
+  if(s<40) return getComputedStyle(document.documentElement).getPropertyValue('--ok').trim();
+  if(s<70) return getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--bad').trim();
+}
+
+async function run(){
+  const key = $('#apiKey').value.trim();
+  if(!key){ alert('Paste your FRED API key first.'); return; }
+  localStorage.setItem('FRED_KEY', key);
+
+  $('#crcBadge').textContent = 'CRC: …';
+  $('#exec').textContent = 'Loading latest data…';
+  $('#indGrid').innerHTML = '';
+  setGauge(0, 'var(--ring)');
+
+  // fetch in parallel
+  const TEN_YEARS_AGO = new Date(); TEN_YEARS_AGO.setFullYear(TEN_YEARS_AGO.getFullYear()-10);
+  const start = TEN_YEARS_AGO.toISOString().slice(0,10);
+
+  // base series
+  const promises = SERIES.map(async meta=>{
+    const obs = await fredSeries(meta.id, key, {start});
+    const latest = obs[obs.length-1];
+    if(!latest) return {meta, error:true};
+
+    // compute score: percentile of last-10y (with sensible transform)
+    const xs = obs.map(o=>o.value);
+    let val = latest.value;
+
+    // spread “invert”: lower spread = more risk
+    if(meta.invert && !meta.lowerIsRisk){
+      // flip sign by using negative values for percentile
+      const px = xs.map(v=>-v); const p = percentile(px, -val);
+      return {meta, latest, score: p, value: val};
+    }
+    // for series where LOWER value implies higher risk -> score by inverted percentile
+    if(meta.lowerIsRisk){
+      const p = percentile(xs, val);
+      return {meta, latest, score: 100 - p, value: val};
+    }
+    // default: higher value => higher risk
+    const p = percentile(xs, val);
+    return {meta, latest, score: p, value: val};
+  });
+
+  // Buffett (approx): Wilshire 5000 / GDP, last 10y ratio
+  const buffettPromise = (async ()=>{
+    try{
+      const wil = await fredSeries('WILL5000INDFC', key, {start}); // Wilshire (index)
+      const gdp = await fredSeries('GDP', key, {start}); // quarterly, billions SAAR
+      if(!wil.length || !gdp.length) throw new Error('missing');
+
+      // build ratio at GDP points: use Wilshire value on or just before GDP date
+      const wByDate = new Map(wil.map(o=>[o.date, o.value]));
+      function nearestWil(d){
+        // simple backward search
+        let dt = new Date(d);
+        for(let i=0;i<7;i++){ // up to a week back (GDP dates are quarter-ends)
+          const s = dt.toISOString().slice(0,10);
+          if(wByDate.has(s)) return wByDate.get(s);
+          dt.setDate(dt.getDate()-1);
+        }
+        // fallback to last Wilshire obs before date
+        return wil.filter(o=>o.date<=d).pop()?.value ?? wil[wil.length-1].value;
+      }
+
+      const ratios=[];
+      for(const o of gdp){
+        const w = nearestWil(o.date);
+        if(isFinite(w) && isFinite(o.value) && o.value>0){
+          const r = (w / o.value) * 100; // scale to “percent like” for readability
+          ratios.push({date:o.date, value:r});
+        }
+      }
+      const last = ratios[ratios.length-1];
+      const xs = ratios.map(x=>x.value);
+      const p = percentile(xs, last.value);
+
+      return { meta: BUFFETT, latest:last, score:p, value:last.value };
+    }catch(e){ return { meta: BUFFETT, error:true }; }
+  })();
+
+  const rows = await Promise.all([...promises, buffettPromise]);
+
+  // compute CRC
+  const valid = rows.filter(r=>!r.error && r.score!=null);
+  const crc = valid.length ? Math.round(valid.reduce((a,b)=>a+b.score,0)/valid.length) : null;
+  state.rows = rows; state.crc = crc;
+
+  // UI: badge + gauge
+  const color = ragColor(crc);
+  $('#crcBadge').textContent = (crc==null) ? 'CRC: —' :
+    `CRC: ${crc} — ${crc<40?'GREEN':(crc<70?'AMBER':'RED')}`;
+  setGauge(crc??0, color);
+
+  // Executive summary (≤500 words, terse)
+  $('#exec').textContent = buildExecutiveSummary(crc, valid);
+
+  // Indicators grid
+  const grid = $('#indGrid');
+  for(const r of rows){
+    grid.appendChild(cardFor(r));
+  }
+}
+
+function cardFor(r){
+  const el = document.createElement('div'); el.className = 'ind';
+  const name = r.meta.name + (r.meta.id==='SP500MN'?' (monthly avg)':'');
+  const chip = `<span class="chip">${r.meta.id}</span>`;
   el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-      <div><strong>${s.name}</strong><span class="id">${s.id}</span></div>
-      <div class="muted" style="font-size:12px" id="d_${s.id}">—</div>
+    <div class="meta">
+      <div class="name">${name} ${chip}</div>
+      <div>${r.latest? ymd(r.latest.date):'—'}</div>
     </div>
-    <div style="margin-top:6px;font-size:28px;font-weight:800" id="v_${s.id}">—</div>
-    <div class="muted" style="margin-top:2px;font-size:13px" id="s_${s.id}">score —</div>
+    <div class="val">${formatValue(r)}</div>
+    <div class="meta muted"><span class="score">score ${r.score??'—'}</span></div>
   `;
   return el;
 }
-SERIES.forEach(s => $('#cards').appendChild(makeCard(s)));
+function formatValue(r){
+  if(r.error || !r.latest) return '—';
+  const v = r.latest.value;
+  if(r.meta.unit==='pct' || r.meta.id==='DGS10' || r.meta.id==='T10Y2Y' || r.meta.id==='T10Y3M' || r.meta.id==='BUFFETT'){
+    return fmtPct(v,2);
+  }
+  // weekly claims integer
+  if(r.meta.id==='ICSA') return Intl.NumberFormat('en-US').format(Math.round(v));
+  // otherwise numeric with mild formatting
+  return (Math.abs(v)>=1000) ? Intl.NumberFormat('en-US').format(Math.round(v)) : (Math.round(v*1000)/1000).toString();
+}
 
-/* ---------- Run ---------- */
-async function run(){
-  const key = $('#key').value.trim();
-  const prox = $('#proxy').value;
-  $('#summary').textContent = 'Loading…';
-  setGauge(NaN);
+/* --------------- Executive summary generator --------------- */
+function buildExecutiveSummary(crc, rows){
+  const byId = Object.fromEntries(rows.map(r=>[r.meta.id, r]));
+  const pct = id => byId[id]?.score;
+  const val = id => byId[id]?.latest?.value;
 
-  const results = [];
-  for (const s of SERIES){
-    try{
-      const j = await fredSeries(s.id, key, prox);
-      const obs = j.observations.filter(o=>o.value!=='.');
-      const latest = obs[obs.length-1];
-      const seriesVals = obs.map(o=>o.value);
-      const pct = rankPctile(seriesVals, latest.value);
-      const score = s.invert ? 100 - pct : pct;
-      results.push({ id:s.id, name:s.name, latest, score, fmt:s.fmt });
+  const parts = [];
 
-      // paint card
-      $(`#v_${s.id}`).textContent = s.fmt(latest.value);
-      $(`#d_${s.id}`).textContent = latest.date;
-      $(`#s_${s.id}`).textContent = `score ${Math.round(score)}`;
-    }catch(e){
-      $(`#v_${s.id}`).textContent = '—';
-      $(`#s_${s.id}`).textContent = 'score —';
-    }
+  // headline
+  parts.push(`CRC ${crc ?? '—'} — ${crc<40?'GREEN':(crc<70?'AMBER':'RED')}.`);
+
+  // curve / rates
+  if(isFinite(pct('T10Y2Y')) && isFinite(pct('T10Y3M'))){
+    const inv = (val('T10Y2Y')<0 || val('T10Y3M')<0);
+    parts.push(`Curve ${inv?'inverted':''}${!inv?'tight':''}, keeping recession risk ${inv?'elevated':'meaningful'}.`);
+  }
+  if(isFinite(pct('DGS10'))){
+    parts.push(`10-year yield sits near the ${pct('DGS10')}th pctile of its decade range.`);
   }
 
-  const used = results.filter(r=>Number.isFinite(r.score));
-  const crc = used.length ? used.reduce((a,b)=>a+b.score,0)/used.length : NaN;
-  setGauge(crc);
-  $('#crcBadge').title = `Based on ${used.length}/${SERIES.length} indicators`;
+  // credit / stress
+  if(isFinite(pct('BAMLH0A0HYM2'))){
+    parts.push(`High-yield spreads at the ${pct('BAMLH0A0HYM2')}th pctile;`);
+  }
+  if(isFinite(pct('STLFSI4'))||isFinite(pct('NFCI'))){
+    parts.push(`stress gauges ${pct('STLFSI4')>50||pct('NFCI')>50?'elevated':'benign'}.`);
+  }
 
-  // Executive summary (≤ ~80 words)
-  $('#summary').textContent = summarize(used, crc);
+  // valuations
+  if(isFinite(pct('BUFFETT'))){
+    parts.push(`“Buffett” valuation ratio is at the ${pct('BUFFETT')}th pctile.`);
+  } else if(isFinite(pct('SP500'))){
+    parts.push(`S&P 500 level sits at the ${pct('SP500')}th pctile.`);
+  }
+
+  // growth / activity
+  const cyc = ['INDPRO','TCU','RSAFS','HOUST','PERMIT'];
+  const weak = cyc.filter(id=>pct(id)>60); // remember lowerIsRisk flips score already
+  if(weak.length){
+    parts.push(`Real-economy momentum uneven: ${weak.length} of 5 activity gauges show late-cycle risk.`);
+  }
+
+  // labor / inflation
+  if(isFinite(pct('UNRATE'))||isFinite(pct('ICSA'))){
+    parts.push(`Labor steady but watch claims/unemployment (scores ${pct('ICSA')}, ${pct('UNRATE')}).`);
+  }
+  const inf = Math.max(pct('CPIAUCSL')??0, pct('CPILFESL')??0, pct('PCEPI')??0);
+  if(isFinite(inf)) parts.push(`Inflation pressures ${inf>60?'lingering':'easing'}.`);
+
+  // USD
+  if(isFinite(pct('DTWEXBGS'))) parts.push(`USD strength (score ${pct('DTWEXBGS')}) tightens global financial conditions.`);
+
+  return parts.join(' ');
 }
-
-/* ---------- Simple summary generator ---------- */
-function summarize(items, crc){
-  const get = id => items.find(x=>x.id===id);
-  const s = (id)=>get(id)?.score ?? NaN;
-
-  const curveTight = (s('T10Y2Y')>60 || s('T10Y3M')>60);
-  const creditTight = (s('BAMLH0A0HYM2')>60 || s('STLFSI4')>60 || s('NFCI')>60);
-  const equityHot   = (s('SP500')>80 || s('SP500MN')>80);
-  const laborOK     = (s('UNRATE')<60 && s('ICSA')<60);
-  const inflationOK = (s('CPIAUCSL')<50 && s('CPILFESL')<50 && s('PCEPI')<50);
-  const activityOK  = (s('INDPRO')<40 && s('TCU')<50 && s('RSAFS')<50 && s('HOUST')<60 && s('PERMIT')<60);
-  const usdTight    = s('DTWEXBGS')>60;
-
-  const bits = [];
-  if (curveTight)   bits.push('Curve remains tight/inverted, keeping recession risk elevated');
-  if (creditTight)  bits.push('Credit conditions/stress are firm; watch HY spreads');
-  if (equityHot)    bits.push('Equities look stretched and volatile');
-  if (!laborOK)     bits.push('Labor is softening around the edges');
-  if (!inflationOK) bits.push('Inflation pressures linger');
-  if (!activityOK)  bits.push('Real-economy momentum is uneven');
-  if (usdTight)     bits.push('Stronger USD implies tighter global financial conditions');
-
-  const label = ragColor(crc).toUpperCase();
-  const lead  = `CRC ${Math.round(crc)} — ${label}.`;
-  const tail  = bits.length ? bits.join('. ') + '.' : 'Signals are mixed; no single driver dominates.';
-  return `${lead} ${tail}`;
-}
-
-/* ---------- Init ---------- */
-document.getElementById('run').addEventListener('click', run);
-document.getElementById('key').value = localStorage.getItem('FRED_KEY') || '';
-document.getElementById('key').addEventListener('change', e=>{
-  localStorage.setItem('FRED_KEY', e.target.value.trim());
-});
 </script>
 </body>
 </html>
