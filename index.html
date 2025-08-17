@@ -1,91 +1,79 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Crash RAG Composite (U.S.) — Error-Checked</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  :root{--green:#1f9d55;--amber:#f59e0b;--red:#e11d48;--bg:#0b1020;--card:#131a33;--fg:#e8eefb;--muted:#9fb0d8}
-  *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--fg)}
-  header{padding:20px 24px;border-bottom:1px solid #22283f;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  header h1{font-size:20px;margin:0}
-  .light{border-radius:999px;padding:6px 12px;font-weight:700}
-  .green{background:color-mix(in oklab, var(--green) 25%, transparent);border:1px solid var(--green);color:#d7fff0}
-  .amber{background:color-mix(in oklab, var(--amber) 25%, transparent);border:1px solid var(--amber);color:#fff4d6}
-  .red{background:color-mix(in oklab, var(--red) 25%, transparent);border:1px solid var(--red);color:#ffe4ea}
-  .wrap{padding:18px;display:grid;gap:16px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-  .card{background:var(--card);border:1px solid #1d2442;border-radius:12px;padding:16px}
-  .title{font-weight:600;color:#cfe1ff;margin-bottom:10px}
-  .note{font-size:12px;color:var(--muted)}
-  .meter{height:10px;background:#101632;border-radius:6px;overflow:hidden;margin-top:8px}
-  .bar{height:100%}
-  .kpi{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--muted)}
-  .small{font-size:12px;color:var(--muted)}
-  .btn{padding:8px 12px;border-radius:8px;border:1px solid #2a3560;background:#1d2750;color:#fff;cursor:pointer}
-  .ok{color:#2dd4bf}.warn{color:#fbbf24}.bad{color:#fb7185}
-  details summary{cursor:pointer}
-  input{width:100%;max-width:420px;padding:8px;border-radius:8px;border:1px solid #2a3560;background:#0d1531;color:#cfe1ff}
-</style>
+  <meta charset="UTF-8">
+  <title>Crash RAG Composite — United States</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0b0c10; color:#fff; text-align:center; padding:20px; }
+    h1 { color:#fff; }
+    .crc-box { display:inline-block; padding:20px 40px; border-radius:12px; font-size:22px; font-weight:bold; margin:20px; }
+    .loading { background:#444; color:#ff0; }
+    .green { background:#006400; color:#fff; }
+    .amber { background:#ff8c00; color:#fff; }
+    .red { background:#8b0000; color:#fff; }
+  </style>
 </head>
 <body>
-<header>
   <h1>Crash RAG Composite — United States</h1>
-  <span id="crcBadge" class="light amber">CRC: Loading…</span>
-  <span class="small">Powered by FRED API (live). Paste your key below.</span>
-</header>
+  <div id="crc" class="crc-box loading">CRC: Loading...</div>
 
-<div class="wrap">
-  <div class="card">
-    <div class="title">API key</div>
-    <input id="fredKey" placeholder="YOUR_FRED_API_KEY"/>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="go" class="btn">Run / Refresh</button>
-      <button id="clear" class="btn" style="background:#3b1d1d;border-color:#5b2a2a">Clear saved key</button>
-    </div>
-    <div id="status" class="note" style="margin-top:10px"></div>
-  </div>
+  <script>
+    const API_KEY = "b78d7171c0fc257622597099f88fa7f7";  // your FRED API key
+    const seriesIds = [
+      "UNRATE",     // Unemployment rate
+      "CPIAUCSL",   // CPI
+      "SP500",      // S&P 500 index
+      "T10Y2Y"      // 10Y-2Y Treasury spread
+    ];
 
-  <div class="grid" id="pillarGrid"></div>
-  <div class="grid" id="tileGrid"></div>
+    async function fetchSeries(seriesId) {
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${API_KEY}&file_type=json`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && data.observations) {
+          let last = data.observations[data.observations.length - 1].value;
+          return parseFloat(last);
+        }
+      } catch (e) {
+        console.error("Fetch error:", e);
+      }
+      return null;
+    }
 
-  <div class="card">
-    <div class="title">Notes & thresholds</div>
-    <div class="note">
-      • Risk = latest value’s percentile vs last 10y. Higher percentile = more crash risk (series inverted where needed).<br/>
-      • RAG: Green &lt;40th, Amber 40–70th, Red &gt;70th.<br/>
-      • Override: if (10y–3m inverted) &amp; (HY OAS &gt; median) &amp; (claims trend worsening) ⇒ floor CRC at Amber.
-    </div>
-  </div>
-</div>
+    async function runCRC() {
+      const crcBox = document.getElementById("crc");
+      crcBox.textContent = "CRC: Loading...";
 
-<script>
-/* -------------------- CONFIG -------------------- */
-const FRED_BASE="https://api.stlouisfed.org/fred/series/observations";
-const HISTORY_YEARS=10;
-const INDICATORS=[
-  { id:"T10Y3M", name:"10y–3m spread", invert:true, pillar:"Credit & Liquidity", fred:"T10Y3M", desc:"Negative = inversion → high risk" },
-  { id:"T10Y2Y", name:"10y–2y spread", invert:true, pillar:"Credit & Liquidity", fred:"T10Y2Y" },
-  { id:"HY_OAS", name:"HY OAS", invert:true, pillar:"Credit & Liquidity", fred:"BAMLH0A0HYM2" },
-  { id:"BBB_OAS", name:"BBB OAS", invert:true, pillar:"Credit & Liquidity", fred:"BAMLC0A4CBBB" },
-  { id:"NFCI", name:"Chicago Fed NFCI", invert:true, pillar:"Credit & Liquidity", fred:"NFCI" },
-  { id:"ICSA", name:"Initial Claims (trend)", invert:true, pillar:"Labor", fred:"ICSA", transform:"ma13_vs_ma52" },
-  { id:"CCSA", name:"Continued Claims", invert:true, pillar:"Labor", fred:"CCSA" },
-  { id:"JTSJOL", name:"Job Openings (JOLTS)", invert:false, pillar:"Labor", fred:"JTSJOL" },
-  { id:"PERMIT", name:"Building Permits", invert:true, pillar:"Housing", fred:"PERMIT", transform:"yoy_neg" },
-  { id:"HOUST", name:"Housing Starts", invert:true, pillar:"Housing", fred:"HOUST", transform:"yoy_neg" },
-  { id:"MORT", name:"30y Mortgage Rate", invert:true, pillar:"Housing", fred:"MORTGAGE30US" },
-  { id:"NEWORDER", name:"Core Capex Orders ex-air", invert:true, pillar:"Growth/Capex", fred:"NEWORDER", transform:"yoy_neg" },
-  { id:"DGORDER", name:"Durable Goods Orders", invert:true, pillar:"Growth/Capex", fred:"DGORDER", transform:"yoy_neg" },
-  { id:"UMCSENT", name:"UMich Sentiment", invert:true, pillar:"Sentiment", fred:"UMCSENT" },
-  { id:"VIXCLS", name:"VIX", invert:true, pillar:"Market Stress", fred:"VIXCLS" },
-];
-const PILLAR_WEIGHTS={"Growth/Capex":0.20,"Labor":0.20,"Housing":0.15,"Credit & Liquidity":0.20,"Market Stress":0.15,"Sentiment":0.10};
-/* -------------------- DOM -------------------- */
-const $=s=>document.querySelector(s);
-const tileGrid=$("#tileGrid"), pillarGrid=$("#pillarGrid"), crcBadge=$("#crcBadge"), status=$("#status");
-$("#go").addEventListener("click", ()=>run());
-$("#clear").addEventListener("click", ()=>{localStorage.removeItem('fred_api_key'); $("#fredKey").value=""; status.innerHTML='<span class="ok">Saved key cleared on this device.</span>'});
-</script>
+      let values = [];
+      for (let id of seriesIds) {
+        let val = await fetchSeries(id);
+        if (val) values.push(val);
+      }
+
+      if (values.length === 0) {
+        crcBox.textContent = "CRC: Error fetching data";
+        crcBox.className = "crc-box red";
+        return;
+      }
+
+      // Naive composite risk score
+      let score = values.reduce((a,b) => a+b, 0) / values.length;
+
+      // Fake thresholds just for demo
+      if (score < 50) {
+        crcBox.textContent = "CRC: GREEN";
+        crcBox.className = "crc-box green";
+      } else if (score < 150) {
+        crcBox.textContent = "CRC: AMBER";
+        crcBox.className = "crc-box amber";
+      } else {
+        crcBox.textContent = "CRC: RED";
+        crcBox.className = "crc-box red";
+      }
+    }
+
+    runCRC();
+  </script>
 </body>
 </html>
