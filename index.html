@@ -2,667 +2,578 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>The Marshall Stock Market Crash Composite Indicator</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-<!-- Chart.js + Time adapter + Zoom plugin -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.umd.min.js"></script>
+<link rel="preconnect" href="https://api.stlouisfed.org" crossorigin>
+<link rel="dns-prefetch" href="https://api.stlouisfed.org">
+<link rel="dns-prefetch" href="https://api.allorigins.win">
+<link rel="dns-prefetch" href="https://api.codetabs.com">
+<link rel="dns-prefetch" href="https://thingproxy.freeboard.io">
 <style>
   :root{
-    --bg:#0d1420;--panel:#121a28;--soft:#0e1724;--muted:#95a3be;--text:#e9f0ff;
-    --chip:#24324a;--chipText:#cfe0ff;--ringTrack:#1e2a40;
-    --green:#17c27d;--amber:#f5a524;--red:#ef4444;--accent:#4c82ff;
-    --card:#0f1625;--cardBorder:#1d2a3b;--shadow:0 10px 28px rgba(0,0,0,.25);
-    --blue:#6aa3ff; --pink:#ff6ad5; --yellow:#ffd369; --teal:#2dd4bf; --orange:#ff9f43;
+    --bg:#0f1720; --panel:#121b26; --muted:#7c8aa0; --text:#e6edf6; --chip:#2a3a4e;
+    --green:#19c37d; --amber:#f5a524; --red:#ef4444; --ring:#1e2a39; --accent:#4386f9;
+    --card:#0f1823;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 110px}
-  h1{margin:0 0 8px;font-size:clamp(22px,5.6vw,40px);line-height:1.1;font-weight:800;letter-spacing:.2px}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
-  input,select,button,textarea{font:600 15px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  input.api, input.text{flex:1;min-width:240px;background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
-    padding:12px 14px;border-radius:12px}
-  select.mode{background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
-    padding:10px 12px;border-radius:12px}
-  button.run,.btn{background:var(--accent);border:0;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800}
-  .btn.alt{background:#22314a;color:#cfe0ff;border:1px solid #2b3b58}
-  .panel{background:var(--panel);border:1px solid var(--ringTrack);border-radius:18px;padding:16px;margin-top:12px;box-shadow:var(--shadow)}
-  .flex{display:flex;gap:16px;align-items:center}
-  .muted{color:var(--muted)} .miniMeta{color:#bcd2ff;font-size:12px}
-  .hidden{display:none!important}
-
-  /* Gauge */
-  .gauge{position:relative;width:120px;height:120px;min-width:120px}
-  .gauge svg{transform:rotate(-90deg)}
-  .gauge .track{stroke:var(--ringTrack)}
-  .gauge .arc{stroke-linecap:round;transition:stroke-dashoffset .5s ease,stroke .2s ease}
-  .gauge .num{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:28px}
-  .badge{display:inline-block;padding:8px 12px;border-radius:12px;font-weight:800}
-  .badge.green{background:#123524;color:#98f1c7;border:1px solid #1f7b58}
-  .badge.amber{background:#3b2a0a;color:#ffd48f;border:1px solid #6b4b12}
-  .badge.red{background:#3a1313;color:#ffbbbb;border:1px solid #6e2b2b}
-
-  /* Alerts ribbon */
-  .alerts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .chip{background:var(--chip);color:var(--chipText);border-radius:999px;padding:6px 10px;font-size:12px;border:1px solid #2b3b58}
-  .chip.red{background:#3a1313;color:#ffbbbb;border-color:#6e2b2b}
-  .chip.amber{background:#3b2a0a;color:#ffd48f;border-color:#6b4b12}
-  .chip.green{background:#123524;color:#98f1c7;border-color:#1f7b58}
-
-  /* Exec */
-  .exec h2{margin:10px 0 6px;font-size:20px}
-  .exec .body{font-size:16px;line-height:1.7;white-space:pre-wrap}
-
-  /* Chart */
-  .chartHead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
-  .chartWrap{position:relative;height:320px}
-  #chart{display:block;width:100%;height:100%;border-radius:10px;background:#0b1420;border:1px solid #1c2a3a}
-  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .key{display:flex;align-items:center;gap:6px;font-size:12px;color:#cfe0ff;background:#1a2436;border:1px solid #273452;border-radius:999px;padding:4px 8px}
-  .sw{width:10px;height:10px;border-radius:2px}
-
-  /* Indicators grid (responsive 1→2→3 cols) */
+  html,body{height:100%}
+  body{
+    margin:0; font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    color:var(--text); background:var(--bg);
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 80px}
+  header h1{margin:0 0 6px;font-size:clamp(22px,3.8vw,40px);line-height:1.1}
+  header .bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  input[type=text]{flex:1;min-width:260px;background:#0b121a;border:1px solid #223045;border-radius:12px;color:var(--text);padding:12px 14px}
+  select,button{background:#182334;border:1px solid #274059;color:var(--text);border-radius:12px;padding:12px 14px}
+  button.primary{background:var(--accent);border-color:#3a6fe0;color:white;font-weight:600}
+  button:disabled{opacity:.6}
+  .row{display:grid;gap:16px;margin-top:16px}
+  .row.cols-2{grid-template-columns:1fr; }
+  @media (min-width:560px){ .row.cols-2{grid-template-columns:1fr 1fr} }
+  @media (min-width:900px){ .row.cols-3{grid-template-columns:repeat(3,1fr)} }
+  .panel{background:var(--panel);border:1px solid #1f2a38;border-radius:16px;padding:16px}
+  .gauge-wrap{display:flex;gap:16px;align-items:center}
+  .gauge{width:132px;height:132px;border-radius:50%;background:
+    conic-gradient(var(--gaugeColor) var(--gaugePct,0%), #263343 0);
+    display:grid;place-items:center;position:relative}
+  .gauge::before{
+    content:"";position:absolute;inset:12px;border-radius:50%;background:var(--panel);
+    box-shadow:inset 0 0 0 10px var(--ring);
+  }
+  .gauge .num{position:relative;font-size:34px;font-weight:700}
+  .badge{display:inline-block;background:#2a3a4e;border:1px solid #3a5068;color:#d9e2ed;
+    padding:8px 12px;border-radius:12px;font-weight:700}
+  .muted{color:var(--muted)}
+  .title{font-weight:700;font-size:20px;margin:0 0 8px}
+  .summary{font-size:15px;color:#cfd8e4}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .chip{background:var(--chip);border:1px solid #34506b;border-radius:999px;padding:4px 10px;font-size:12px;color:#cfe1ff}
   .grid{display:grid;gap:12px}
-  @media(min-width:560px){.grid{grid-template-columns:repeat(2, minmax(0,1fr))}}
-  @media(min-width:980px){.grid{grid-template-columns:repeat(3, minmax(0,1fr))}}
-  .card{background:var(--card);border:1px solid var(--cardBorder);border-radius:14px;padding:12px;cursor:pointer}
-  .card:active{transform:scale(.997)}
-  .ind .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-  .id{background:var(--chip);color:var(--chipText);border-radius:999px;padding:3px 7px;font-size:11px}
-  .val{font-size:26px;font-weight:800;letter-spacing:.2px}
-  .ind .muted{font-size:12px}
-
-  /* Settings panels */
-  .settingsGrid{display:grid;gap:10px}
-  @media(min-width:800px){.settingsGrid{grid-template-columns:1fr 1fr}}
-  .kv{display:grid;grid-template-columns:1fr 140px;gap:8px;align-items:center}
-  .small{font-size:12px}
-
-  /* Modal */
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:20}
-  .modal.show{display:flex}
-  .sheet{max-width:560px;width:92%;background:var(--panel);border:1px solid var(--ringTrack);border-radius:16px;box-shadow:var(--shadow);padding:14px}
-  .sheet h3{margin:0 0 8px;font-size:18px}
-  .sheet .close{float:right;background:#2a3b59;color:#cfe0ff;border:1px solid #3b527a;border-radius:10px;padding:6px 10px}
-  .spark{width:100%;height:80px;background:#0f1625;border:1px solid #1d2a3b;border-radius:8px;margin:8px 0}
+  .cards{grid-template-columns:1fr}
+  @media (min-width:560px){ .cards{grid-template-columns:1fr 1fr} }
+  @media (min-width:900px){ .cards{grid-template-columns:repeat(3,1fr)} }
+  .card{background:var(--card);border:1px solid #1d2836;border-radius:14px;padding:14px}
+  .card .top{display:flex;justify-content:space-between;align-items:center}
+  .card .value{font-size:28px;font-weight:800;margin:6px 0}
+  .card .score{font-size:13px;color:#9bb0c7}
+  .card small{color:#9cb0c7}
+  .help{font-size:13px;color:#a8b7c9;margin-top:6px}
+  .flex{display:flex;gap:10px;align-items:center}
+  .hidden{display:none!important}
+  .footer-note{color:#93a7be;font-size:13px;margin-top:10px}
+  .error{color:#ffb4b4}
+  canvas{background:#0e1620;border:1px solid #1e2b3d;border-radius:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+  <header>
+    <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+    <div class="bar">
+      <input id="key" type="text" placeholder="Your FRED API key" />
+      <select id="weightMode">
+        <option value="advanced">Advanced (predictive tilt)</option>
+        <option value="basic">Basic (balanced)</option>
+        <option value="simple">Simple (equal)</option>
+        <option value="custom">Custom (from localStorage)</option>
+      </select>
+      <button id="run" class="primary">Run / Refresh</button>
+      <!-- Proxy picker intentionally hidden; unhide by removing style -->
+      <select id="proxy" class="hidden">
+        <option value="auto">Auto (race)</option>
+        <option value="direct">Direct (CORS ok)</option>
+        <option value="allorigins">AllOrigins</option>
+        <option value="codetabs">Codetabs</option>
+        <option value="thingproxy">ThingProxy</option>
+      </select>
+    </div>
+  </header>
 
-  <!-- Controls -->
-  <div class="row">
-    <input id="apiKey" class="api" placeholder="YOUR_FRED_API_KEY" autocomplete="off">
-    <select id="weightMode" class="mode" title="Weighting">
-      <option value="simple">Simple (equal)</option>
-      <option value="basic">Basic (balanced)</option>
-      <option value="advanced" selected>Advanced (predictive tilt)</option>
-      <option value="custom">Custom (JSON)</option>
-    </select>
-    <button id="runBtn" class="run">Run / Refresh</button>
-  </div>
-
-  <!-- Custom weights -->
-  <div id="customBox" class="panel hidden">
-    <div class="muted">Paste weights JSON (unknown IDs ignored; weights renormalized).</div>
-    <textarea id="custom" class="text" spellcheck="false" placeholder='{"T10Y2Y":0.2,"T10Y3M":0.2,"BAMLH0A0HYM2":0.2,"STLFSI4":0.1,"NFCI":0.1,"UNRATE":0.05,"ICSA":0.05,"VIXCLS":0.05,"BUFFETT":0.05}'></textarea>
-  </div>
-
-  <!-- CRC + Executive summary + Alerts -->
-  <section class="panel exec">
-    <div class="flex">
-      <div class="gauge">
-        <svg width="120" height="120" viewBox="0 0 100 100">
-          <circle class="track" cx="50" cy="50" r="44" fill="none" stroke-width="10"/>
-          <circle id="arc" class="arc" cx="50" cy="50" r="44" fill="none" stroke-width="10"
-                  stroke-dasharray="276.46" stroke-dashoffset="276.46" stroke="#f5a524"/>
-        </svg>
-        <div id="crcNum" class="num">–</div>
-      </div>
+  <!-- CRC / Summary -->
+  <section class="panel">
+    <div class="gauge-wrap">
+      <div class="gauge" id="gauge"><div class="num" id="gNum">--</div></div>
       <div>
-        <div id="crcBadge" class="badge amber">CRC: — — AMBER</div>
-        <div id="lastUpdated" class="miniMeta" style="margin-top:6px"></div>
+        <div id="crcBadge" class="badge">CRC: --</div>
+        <div class="footer-note" id="runMeta"></div>
+        <div class="footer-note muted">Composite = average of indicator percentiles vs last 10y (using sensible inverts).</div>
       </div>
     </div>
-
-    <div class="alerts" id="alerts"></div>
-
-    <h2>Executive Summary</h2>
-    <div id="execBody" class="body muted">Paste your key and press Run. The narrative will auto-generate.</div>
-
-    <div style="margin-top:14px">
-      <button id="toggleHist" class="btn alt">📜 Show History</button>
-      <span id="histCount" class="miniMeta"></span>
+    <h3 class="title" style="margin-top:16px">Executive Summary</h3>
+    <div id="summary" class="summary">—</div>
+    <div class="chips" style="margin-top:10px">
+      <button id="historyBtn" class="badge" style="background:#243349;border-color:#2f4966">Show History</button>
+      <a class="badge" target="_blank" rel="noreferrer" style="text-decoration:none;background:#243349;border-color:#2f4966" href="https://fred.stlouisfed.org/releases/calendar">Release Calendar</a>
     </div>
-    <div id="historyBox" class="hidden" style="margin-top:10px"></div>
+    <div id="history" class="hidden help"></div>
   </section>
 
   <!-- Chart -->
   <section class="panel">
-    <div class="chartHead">
-      <div>
-        <strong>FRED Line Chart (multi-overlay • pinch-zoom & pan)</strong>
-        <div class="miniMeta">Two fingers: zoom • One finger: pan • Double-tap: reset • Up to 5 overlays</div>
-      </div>
-      <div class="row" style="gap:6px">
-        <select id="chartSeries" class="mode">
-          <option value="SP500">SP500</option><option value="DGS10">DGS10</option>
-          <option value="T10Y2Y">T10Y2Y</option><option value="T10Y3M">T10Y3M</option>
-          <option value="BAMLH0A0HYM2">HY OAS</option><option value="VIXCLS">VIX</option>
-          <option value="BUFFETT">BUFFETT</option><option value="UNRATE">UNRATE</option>
-          <option value="ICSA">ICSA</option><option value="CPIAUCSL">CPI</option>
-          <option value="CPILFESL">Core CPI</option><option value="DTWEXBGS">USD broad</option>
-        </select>
-        <button id="addSeries" class="btn alt">+ Overlay</button>
-        <button id="resetSeries" class="btn alt">Clear</button>
-        <button id="refreshChart" class="btn alt">↻</button>
-      </div>
+    <div class="flex" style="margin-bottom:10px">
+      <h3 class="title" style="margin:0">Interactive Chart</h3>
+      <select id="chartSel" style="margin-left:auto">
+        <option value="SP500">S&P 500 (SP500)</option>
+        <option value="VIXCLS">VIX (VIXCLS)</option>
+        <option value="BAMLH0A0HYM2">HY OAS (BAMLH0A0HYM2)</option>
+        <option value="DGS10">10Y Yield (DGS10)</option>
+        <option value="T10Y2Y">10Y–2Y spread (T10Y2Y)</option>
+        <option value="T10Y3M">10Y–3M spread (T10Y3M)</option>
+        <option value="DTWEXBGS">Trade‑weighted USD (DTWEXBGS)</option>
+        <option value="BUFFETT">Buffett Ratio (Wilshire/GDP)</option>
+      </select>
     </div>
-    <div class="chartWrap"><canvas id="chart"></canvas></div>
-    <div class="legend" id="legend"></div>
+    <canvas id="chart" height="260"></canvas>
+    <div class="help">Pinch to zoom • Drag while holding one finger + second finger to pan • Double‑tap to reset.</div>
   </section>
 
   <!-- Indicators -->
   <section class="panel">
-    <h2 style="margin:0 0 10px">Indicators</h2>
-    <div id="cards" class="grid"></div>
-  </section>
-
-  <!-- Alerts + Calendar + Views -->
-  <section class="panel">
-    <h2 style="margin:0 0 10px">Alerts • Calendar • Views</h2>
-    <div class="settingsGrid">
-      <!-- Alerts -->
-      <div class="card" style="cursor:default">
-        <h3 style="margin:0 0 8px;font-size:16px">Alert thresholds</h3>
-        <div class="kv"><span>CRC ≥</span><input id="a_crc" class="text" type="number" value="70"></div>
-        <div class="kv"><span>2s10s ≤</span><input id="a_2s10s" class="text" type="number" step="0.01" value="0"></div>
-        <div class="kv"><span>HY OAS ≥</span><input id="a_oas" class="text" type="number" step="0.1" value="5"></div>
-        <div class="kv"><span>VIX ≥</span><input id="a_vix" class="text" type="number" step="0.1" value="25"></div>
-        <div class="kv"><span>Claims ≥ (000s)</span><input id="a_claims" class="text" type="number" value="300"></div>
-        <div class="kv"><span>Buffett ≥</span><input id="a_buffett" class="text" type="number" step="1" value="150"></div>
-        <div class="row" style="margin-top:6px">
-          <button id="saveAlerts" class="btn alt">Save Alerts</button>
-          <span class="miniMeta">Stored locally</span>
-        </div>
-      </div>
-
-      <!-- Calendar -->
-      <div class="card" style="cursor:default">
-        <h3 style="margin:0 0 8px;font-size:16px">Economic calendar</h3>
-        <div class="miniMeta">Paste an ICS/JSON web address and press Import or Open. We save it locally for reuse.</div>
-        <div class="kv"><span>Calendar URL</span><input id="calUrl" class="text" placeholder="https://…"></div>
-        <div class="row" style="margin-top:6px">
-          <button id="importCal" class="btn alt">Import</button>
-          <button id="openCal" class="btn alt">Open</button>
-          <button id="clearCal" class="btn alt">Clear</button>
-        </div>
-        <div class="small muted" style="margin-top:6px">
-          Examples: ICS feed from your provider, JSON endpoints, or public calendars (macro releases, FOMC, etc.).
-        </div>
-        <div id="calendarList" class="small" style="margin-top:8px;white-space:pre-wrap"></div>
-      </div>
-
-      <!-- Views -->
-      <div class="card" style="cursor:default">
-        <h3 style="margin:0 0 8px;font-size:16px">Saved Views</h3>
-        <div class="miniMeta">Save your weighting, alerts & overlays. Share via link.</div>
-        <div class="kv"><span>View name</span><input id="viewName" class="text" placeholder="My Amber Watch"></div>
-        <div class="row" style="margin-top:6px">
-          <button id="saveView" class="btn alt">Save</button>
-          <button id="loadView" class="btn alt">Load</button>
-          <button id="deleteView" class="btn alt">Delete</button>
-          <button id="shareView" class="btn alt">Share link</button>
-        </div>
-        <div class="miniMeta" id="viewsList" style="margin-top:6px"></div>
-      </div>
-    </div>
+    <h3 class="title">Indicators</h3>
+    <div id="cards" class="grid cards"></div>
   </section>
 </div>
 
-<!-- Drilldown modal -->
-<div id="modal" class="modal">
-  <div class="sheet">
-    <button id="closeModal" class="close">Close</button>
-    <h3 id="mTitle">—</h3>
-    <div class="miniMeta" id="mMeta">—</div>
-    <canvas id="mSpark" class="spark" width="700" height="120"></canvas>
-    <div id="mExplainer" class="muted" style="white-space:pre-wrap;margin-top:6px"></div>
-  </div>
-</div>
+<!-- Charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.umd.min.js"></script>
 
 <script>
-/* ========== helpers ========== */
-const $ = s => document.querySelector(s);
-const ringLen = 2*Math.PI*44;
-const state = { rows:[], cache:{}, fetchedAt:null, overlays:[], chart:null };
-const explain = {
-  T10Y2Y:'10Y–2Y: curve shape; inversion warns late cycle; bear steepening can tighten conditions.',
-  T10Y3M:'10Y–3M: policy-sensitive curve; deep inversions preceded most recessions since 1960s.',
-  DGS10:'10Y yield: higher = tighter financial conditions, pressure on rate-sensitive sectors.',
-  BAMLH0A0HYM2:'High-yield OAS: credit risk premium; widening often leads equity drawdowns.',
-  STLFSI4:'Financial Stress Index: composite of rates/spreads/vol; spikes = systemic strain.',
-  NFCI:'National Financial Conditions: positive=tight; negative=loose.',
-  VIXCLS:'VIX: cost of crash insurance; spikes = risk-off; low = calm/complacency.',
-  BUFFETT:'Buffett ratio: U.S. market cap vs GDP; elevated = expensive on macro lens.',
-  SP500:'S&P 500 index level (context only).',
-  UNRATE:'Unemployment rate: rising levels confirm demand slowdown (lags).',
-  ICSA:'Initial claims: weekly early-warning for labor softness.',
-  CPIAUCSL:'CPI headline: higher keeps policy restrictive.',
-  CPILFESL:'Core CPI: sticky core keeps rates higher for longer.',
-  PCEPI:'PCE prices: Fed’s preferred inflation gauge.',
-  INDPRO:'Industrial production: softness = later-cycle cooling.',
-  TCU:'Capacity utilization: slack building when lower.',
-  RSAFS:'Retail sales (advance): household demand pulse.',
-  HOUST:'Housing starts: interest-sensitive leading sector.',
-  PERMIT:'Building permits: forward guide for housing.',
-  DTWEXBGS:'Broad USD index: stronger USD tightens global conditions.'
-};
+/* =========================
+   CONFIG
+========================= */
+const TTL_HOURS = 6;            // cache time
+const CONCURRENCY = 6;          // parallel fetch cap
+const YEARS_BACK = 11;          // observation window (keeps payloads small)
+const STORAGE_KEY = 'MCI_LAST_RUN';
+const KEY_STORAGE = 'FRED_KEY';
+const WEIGHT_MODE_KEY = 'MCI_WEIGHT_MODE';
+const CUSTOM_WEIGHTS_KEY = 'MCI_CUSTOM_WEIGHTS'; // JSON map when mode=custom
 
-/* ========== series & weights ========== */
-const SERIES = [
-  { id:'T10Y2Y',name:'10Y–2Y spread',invert:true,type:'pct',cat:'curve' },
-  { id:'T10Y3M',name:'10Y–3M spread',invert:true,type:'pct',cat:'curve' },
-  { id:'DGS10', name:'10Y Treasury yield',invert:false,type:'pct',cat:'rates' },
-  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',invert:false,type:'pct',cat:'credit' },
-  { id:'STLFSI4',name:'St. Louis Financial Stress (v4)',invert:false,type:'raw',cat:'credit' },
-  { id:'NFCI', name:'Chicago Fed Financial Conditions',invert:false,type:'raw',cat:'credit' },
-  { id:'VIXCLS',name:'VIX index',invert:false,type:'raw',cat:'markets' },
-  { id:'BUFFETT',name:'“Buffett” valuation (Wilshire/GDP)',invert:false,type:'pct',cat:'markets' },
-  { id:'SP500', name:'S&P 500 index (display-only)',invert:false,type:'raw',cat:'markets',score:false },
-  { id:'UNRATE',name:'Unemployment rate',invert:false,type:'pct',cat:'labor' },
-  { id:'ICSA', name:'Initial jobless claims (weekly)',invert:false,type:'raw',cat:'labor' },
-  { id:'CPIAUCSL',name:'CPI (headline)',invert:false,type:'raw',cat:'infl' },
-  { id:'CPILFESL',name:'Core CPI',invert:false,type:'raw',cat:'infl' },
-  { id:'PCEPI',name:'PCE prices',invert:false,type:'raw',cat:'infl' },
-  { id:'INDPRO',name:'Industrial production',invert:true,type:'raw',cat:'macro' },
-  { id:'TCU',name:'Capacity utilization',invert:true,type:'pct',cat:'macro' },
-  { id:'RSAFS',name:'Retail sales (advance)',invert:true,type:'raw',cat:'macro' },
-  { id:'HOUST',name:'Housing starts',invert:true,type:'raw',cat:'macro' },
-  { id:'PERMIT',name:'Building permits',invert:true,type:'raw',cat:'macro' },
-  { id:'DTWEXBGS',name:'Trade-weighted USD (broad)',invert:false,type:'raw',cat:'fx' }
+// Indicator definition
+const INDICATORS = [
+  { id:'DGS10',      name:'10Y Treasury yield',           invert:false, cat:'curve',   fmt:'pct',  desc:'Benchmark long rate; higher real financing costs raise crash risk.' },
+  { id:'T10Y2Y',     name:'10Y–2Y spread',                invert:true,  cat:'curve',   fmt:'pct',  desc:'Curve tightness/inversion; lower or inverted spreads flag late-cycle risk.' },
+  { id:'T10Y3M',     name:'10Y–3M spread',                invert:true,  cat:'curve',   fmt:'pct',  desc:'Front-end vs long-end; deep inversion often precedes recessions.' },
+  { id:'BAMLH0A0HYM2',name:'ICE BofA HY OAS',             invert:false, cat:'credit',  fmt:'pct',  desc:'High-yield spread; wider OAS = tighter credit & higher default risk.' },
+  { id:'STLFSI4',    name:'St. Louis Financial Stress (v4)', invert:false,cat:'credit',fmt:'raw',  desc:'Systemic stress gauge across markets; higher = tighter conditions.' },
+  { id:'NFCI',       name:'Chicago Fed Financial Conditions', invert:false,cat:'credit',fmt:'raw',  desc:'Tightness across funding & risk appetite; higher = tighter.' },
+  { id:'SP500',      name:'S&P 500 index',                 invert:false, cat:'display', fmt:'index',desc:'Level context (display only, not scored in CRC).', exclude:true },
+  { id:'VIXCLS',     name:'VIX index',                     invert:false, cat:'vol',    fmt:'pct',  desc:'Equity vol; higher implies pricier crash insurance & fragility.' },
+  { id:'UNRATE',     name:'Unemployment rate',             invert:false, cat:'labor',  fmt:'pct',  desc:'Labor slack; rising unemployment historically raises drawdown odds.' },
+  { id:'ICSA',       name:'Initial jobless claims (wkly)', invert:false, cat:'labor',  fmt:'int',  desc:'Early labor deterioration often shows in claims first.' },
+  { id:'CPIAUCSL',   name:'CPI (headline)',                invert:false, cat:'prices', fmt:'idx',  desc:'Broad inflation; higher keeps policy restrictive longer.' },
+  { id:'CPILFESL',   name:'Core CPI',                      invert:false, cat:'prices', fmt:'idx',  desc:'Underlying inflation trend; persistence sustains policy restraint.' },
+  { id:'PCEPI',      name:'PCE prices',                    invert:false, cat:'prices', fmt:'idx',  desc:'Fed’s preferred inflation gauge (headline).' },
+  { id:'INDPRO',     name:'Industrial production',         invert:true,  cat:'activity',fmt:'idx', desc:'Real activity breadth; softer production raises risk.' },
+  { id:'TCU',        name:'Capacity utilization',          invert:true,  cat:'activity',fmt:'pct', desc:'Factory use; falling utilization signals cooling demand.' },
+  { id:'RSAFS',      name:'Retail sales (advance)',        invert:true,  cat:'activity',fmt:'int', desc:'Household demand proxy; weakening sales raise risk.' },
+  { id:'HOUST',      name:'Housing starts',                invert:true,  cat:'activity',fmt:'int', desc:'Cyclical housing; softer starts indicate slowing demand.' },
+  { id:'PERMIT',     name:'Building permits',              invert:true,  cat:'activity',fmt:'int', desc:'Leading housing gauge; weakness flags future softness.' },
+  { id:'DTWEXBGS',   name:'Trade‑weighted USD (broad)',    invert:false, cat:'usd',    fmt:'idx', desc:'Stronger USD tightens global financial conditions.' },
+  // Buffett (synthetic series)
+  { id:'BUFFETT',    name:'Buffett Ratio (Wilshire/GDP)',  invert:false, cat:'valuation',fmt:'pct', desc:'Total market value vs GDP; higher valuation = higher drawdown vulnerability.', synthetic:true }
 ];
-const WEIGHTS = {
-  simple:null,
-  basic:{T10Y2Y:0.10,T10Y3M:0.10,BAMLH0A0HYM2:0.0833,STLFSI4:0.0833,NFCI:0.0833,UNRATE:0.075,ICSA:0.075,INDPRO:0.03,TCU:0.03,RSAFS:0.03,HOUST:0.03,PERMIT:0.03,CPIAUCSL:0.0333,CPILFESL:0.0333,PCEPI:0.0333,VIXCLS:0.05,BUFFETT:0.05,DTWEXBGS:0.03,DGS10:0.02,SP500:0},
-  advanced:{T10Y2Y:0.175,T10Y3M:0.175,BAMLH0A0HYM2:0.10,STLFSI4:0.10,NFCI:0.10,UNRATE:0.05,ICSA:0.05,INDPRO:0.016,TCU:0.016,RSAFS:0.016,HOUST:0.016,PERMIT:0.016,CPIAUCSL:0.0167,CPILFESL:0.0167,PCEPI:0.0167,VIXCLS:0.04,BUFFETT:0.03,DTWEXBGS:0.03,DGS10:0.02,SP500:0}
+
+// Weight maps
+function weightMap(mode='advanced'){
+  const m = {};
+  const base = 1;
+  INDICATORS.forEach(s=>m[s.id]= base);
+  if(mode==='simple') return m;
+  if(mode==='basic'){
+    scale(m,['T10Y2Y','T10Y3M','DGS10'],1.2);
+    scale(m,['BAMLH0A0HYM2','STLFSI4','NFCI'],1.3);
+    scale(m,['UNRATE','ICSA'],1.2);
+    scale(m,['VIXCLS','DTWEXBGS'],0.7);
+    scale(m,['INDPRO','TCU','RSAFS','HOUST','PERMIT'],0.9);
+    scale(m,['BUFFETT'],1.1);
+    m['SP500']=0;
+    return m;
+  }
+  if(mode==='advanced'){
+    scale(m,['T10Y2Y','T10Y3M','DGS10'],1.5);
+    scale(m,['BAMLH0A0HYM2','STLFSI4','NFCI'],1.6);
+    scale(m,['UNRATE','ICSA'],1.4);
+    scale(m,['CPIAUCSL','CPILFESL','PCEPI'],0.9);
+    scale(m,['INDPRO','TCU','RSAFS','HOUST','PERMIT'],1.1);
+    scale(m,['VIXCLS','DTWEXBGS'],0.8);
+    scale(m,['BUFFETT'],1.3);
+    m['SP500']=0;
+    return m;
+  }
+  // custom
+  try {
+    const json = JSON.parse(localStorage.getItem(CUSTOM_WEIGHTS_KEY)||'{}');
+    Object.keys(json).forEach(k=>{ if(k in m && typeof json[k]==='number') m[k]=json[k]; });
+  } catch(e){}
+  m['SP500']=0;
+  return m;
+}
+function scale(map,ids,fac){ ids.forEach(id=>map[id]=(map[id]||1)*fac); }
+
+// helpers
+const $ = sel => document.querySelector(sel);
+const fmt = {
+  pct: v => (v==null||isNaN(v)) ? '—' : (+v).toFixed(2)+'%',
+  raw: v => (v==null||isNaN(v)) ? '—' : String(+v),
+  idx: v => (v==null||isNaN(v)) ? '—' : (+v).toFixed(3),
+  int: v => (v==null||isNaN(v)) ? '—' : (+v).toLocaleString(),
+  index:v => (v==null||isNaN(v)) ? '—' : (+v).toLocaleString()
 };
 
-/* ========== fetch / proxy ========== */
-const proxiers=[u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,u=>`https://cors.isomorphic-git.org/${u}`];
-function fredURL(id,key,start){
-  const u = new URL('https://api.stlouisfed.org/fred/series/observations');
-  u.searchParams.set('series_id',id); u.searchParams.set('api_key',key); u.searchParams.set('file_type','json');
-  if(start) u.searchParams.set('observation_start',start);
-  u.searchParams.set('limit','100000'); u.searchParams.set('_',Date.now().toString());
-  return u.toString();
+// storage
+function getKey(){
+  const urlKey = new URL(location.href).searchParams.get('key');
+  const k = urlKey || localStorage.getItem(KEY_STORAGE) || '';
+  if(urlKey) localStorage.setItem(KEY_STORAGE,urlKey);
+  return k;
 }
-async function fetchRace(url){
-  const tries=proxiers.map(p=>fetch(p(url),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)));
-  const settled=await Promise.allSettled(tries);
-  for(const s of settled){ if(s.status==='fulfilled') return s.value; }
-  throw new Error('All proxies failed');
-}
-async function fredSeries(id,key,years=11){
-  const start=new Date(); start.setFullYear(start.getFullYear()-years);
-  const j=await fetchRace(fredURL(id,key,start.toISOString().slice(0,10)));
-  const obs=(j?.observations||[]).map(o=>({date:o.date,value:o.value})).filter(o=>o.value!=='.');
-  const arr=obs.map(o=>({date:o.date,value:+o.value}));
-  state.cache[id]=arr; return arr;
-}
+function setKey(v){ localStorage.setItem(KEY_STORAGE,v); }
 
-/* ========== Buffett (hardened) ========== */
-async function buffettRatio(key){
+// dates
+function dateISO(d){ return d.toISOString().slice(0,10); }
+function daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d; }
+const startDate = dateISO(daysAgo(365*YEARS_BACK));
+const endDate = dateISO(new Date());
+
+// cache
+function cacheGet(k){
+  const raw = localStorage.getItem('CACHE_'+k);
+  if(!raw) return null;
   try{
-    const wil=await fredSeries('WILL5000INDFC',key,12); // Wilshire 5000 Full Cap (daily)
-    const gdp=await fredSeries('GDP',key,12);           // Quarterly SAAR
-    if(!wil.length||!gdp.length) throw new Error('Missing Wilshire or GDP');
-    const map=new Map(wil.map(d=>[d.date,d.value]));
-    function near(d){
-      let t=new Date(d);
-      for(let i=0;i<15;i++){ const k=t.toISOString().slice(0,10); if(map.has(k)) return map.get(k); t.setUTCDate(t.getUTCDate()-1); }
-      let prior=null; for(const w of wil){ if(w.date<=d) prior=w; else break; } return prior?prior.value:wil[wil.length-1].value;
+    const obj = JSON.parse(raw);
+    if(Date.now()-obj.t > TTL_HOURS*3600*1000) return null;
+    return obj.v;
+  }catch(e){return null;}
+}
+function cacheSet(k,v){ localStorage.setItem('CACHE_'+k, JSON.stringify({t:Date.now(),v})); }
+
+// proxy fetch (race)
+async function fetchJSON(url){
+  // direct first
+  const direct = fetch(url,{mode:'cors'}).then(r=>r.ok?r.json():Promise.reject(r.status));
+  // proxies
+  const allorigins = fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)).then(r=>r.ok?r.json():Promise.reject('ao'));
+  const codetabs   = fetch('https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url)).then(r=>r.ok?r.json():Promise.reject('ct'));
+  const thingproxy = fetch('https://thingproxy.freeboard.io/fetch/'+encodeURIComponent(url)).then(r=>r.ok?r.json():Promise.reject('tp'));
+  try{
+    return await Promise.any([direct, allorigins, codetabs, thingproxy]);
+  }catch(e){
+    // try sequential as fallback
+    for(const p of [allorigins, codetabs, thingproxy]){
+      try{ return await p; }catch(_){}
     }
-    const ratio=gdp.map(q=>({date:q.date,value:(near(q.date)/q.value)*100})).filter(x=>Number.isFinite(x.value));
-    state.cache['BUFFETT']=ratio; return ratio;
-  }catch(e){
-    console.warn('BUFFETT fallback:',e);
-    state.cache['BUFFETT']=[]; // still chartable (empty)
-    return [];
+    throw new Error('All proxies failed');
   }
 }
 
-/* ========== stats ========== */
-function lastNumeric(arr){ for(let i=arr.length-1;i>=0;i--){ if(Number.isFinite(arr[i].value)) return arr[i]; } return null; }
-function tenYearWindow(arr){
-  if(!arr.length) return []; const last=new Date(arr[arr.length-1].date);
-  const cut=new Date(last); cut.setFullYear(cut.getFullYear()-10);
-  return arr.filter(d=>new Date(d.date)>=cut);
-}
-function pctRank(latest,sample){
-  if(!Number.isFinite(latest)||!sample.length) return NaN;
-  const xs=sample.map(x=>x.value).filter(Number.isFinite).sort((a,b)=>a-b);
-  if(!xs.length) return NaN; let lo=0,hi=xs.length;
-  while(lo<hi){ const m=(lo+hi)>>1; if(xs[m]<=latest) lo=m+1; else hi=m; }
-  return 100*(lo/xs.length);
+// FRED observations helper
+async function fredSeries(series_id, api_key){
+  const cacheK = series_id;
+  const c = cacheGet(cacheK);
+  if(c) return c;
+
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${series_id}&api_key=${api_key}&file_type=json&observation_start=${startDate}&observation_end=${endDate}`;
+  const json = await fetchJSON(url);
+  cacheSet(cacheK,json);
+  return json;
 }
 
-/* ========== UI core ========== */
-function setGauge(n){
-  const pct=Number.isFinite(n)? Math.max(0,Math.min(100,n)) : 0;
-  const offset=ringLen*(1-pct/100);
-  const arc=$('#arc'), num=$('#crcNum'), badge=$('#crcBadge');
-  const band=n>70?'red':(n>=40?'amber':'green');
-  const color = getComputedStyle(document.documentElement).getPropertyValue(band==='red'?'--red':band==='amber'?'--amber':'--green').trim();
-  arc.style.strokeDashoffset=offset; arc.style.stroke=color;
-  num.textContent=Number.isFinite(n)? Math.round(n) : '–';
-  badge.className='badge '+band; badge.textContent=Number.isFinite(n)? `CRC: ${Math.round(n)} — ${band.toUpperCase()}`:'CRC: —';
-}
-function fmtValue(row){
-  const id=row.id, val=row.latest?.value;
-  if(!Number.isFinite(val)) return '—';
-  if(['T10Y2Y','T10Y3M','DGS10','BAMLH0A0HYM2','BUFFETT','UNRATE'].includes(id)) return (+val).toFixed(2)+'%';
-  if(id==='ICSA') return Intl.NumberFormat('en-US').format(Math.round(val));
-  if(id==='VIXCLS') return (+val).toFixed(2);
-  return (Math.abs(val)>=1000)? Intl.NumberFormat('en-US').format(Math.round(val)) : (Math.round(val*1000)/1000).toString();
-}
-function makeCard(row){
-  const el=document.createElement('div'); el.className='card ind'; el.dataset.id=row.id;
-  const date=row.latest?.date ?? '—'; const value=row.latest? row.display : '—';
-  const score=Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'context only';
-  el.innerHTML=`
-    <div class="top"><div><strong>${row.name}</strong> <span class="id">${row.id}</span></div><div class="muted" style="font-size:12px">${date}</div></div>
-    <div class="val">${value}</div>
-    <div class="muted">${score}</div>`;
-  el.addEventListener('click',()=>openDrill(row));
-  return el;
-}
-
-/* ========== Narrative ========== */
-function bandName(crc){ return crc>70?'Red':(crc>=40?'Amber':'Green'); }
-function asPct(v,d=2){ return Number.isFinite(v)? v.toFixed(d)+'%' : '—'; }
-function asNum(v){ return Number.isFinite(v)? (Math.abs(v)>=1000? Intl.NumberFormat('en-US').format(Math.round(v)) : (Math.round(v*1000)/1000).toString()) : '—'; }
-function buildNarrative(rows,crc,modeLabel){
-  const byId=Object.fromEntries(rows.map(r=>[r.id,r])); const s=id=>byId[id]?.score; const v=id=>byId[id]?.latest?.value;
-  const band=bandName(crc); const out=[];
-  out.push(`CRC ${Math.round(crc)} (${band}, ${modeLabel}). Weighted 10-year percentiles across indicators.`);
-  const scored=rows.filter(r=>r.score!=null);
-  const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
-  const low=[...scored].sort((a,b)=>a.score-b.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
-  if(top.length) out.push(`Top pressures: ${top.join(', ')}.`); if(low.length) out.push(`Benign: ${low.join(', ')}.`);
-  const curve=[]; if(Number.isFinite(v('T10Y2Y'))) curve.push(`2s10s ${asPct(v('T10Y2Y'))} (s${Math.round(s('T10Y2Y')||0)})`);
-  if(Number.isFinite(v('T10Y3M'))) curve.push(`10y-3m ${asPct(v('T10Y3M'))} (s${Math.round(s('T10Y3M')||0)})`);
-  if(Number.isFinite(v('DGS10')))  curve.push(`10y ${asPct(v('DGS10'))} (s${Math.round(s('DGS10')||0)})`);
-  if(curve.length) out.push(`Curve/rates: ${curve.join('; ')}.`);
-  const cred=[]; if(Number.isFinite(v('BAMLH0A0HYM2'))) cred.push(`HY OAS ${asPct(v('BAMLH0A0HYM2'))} (s${Math.round(s('BAMLH0A0HYM2')||0)})`);
-  if(Number.isFinite(v('STLFSI4'))) cred.push(`FSI ${asNum(v('STLFSI4'))} (s${Math.round(s('STLFSI4')||0)})`);
-  if(Number.isFinite(v('NFCI'))) cred.push(`NFCI ${asNum(v('NFCI'))} (s${Math.round(s('NFCI')||0)})`);
-  if(cred.length) out.push(`Credit/stress: ${cred.join('; ')}.`);
-  const lab=[]; if(Number.isFinite(v('UNRATE'))) lab.push(`unemp ${asPct(v('UNRATE'),1)} (s${Math.round(s('UNRATE')||0)})`);
-  if(Number.isFinite(v('ICSA'))) lab.push(`claims ${asNum(v('ICSA'))} (s${Math.round(s('ICSA')||0)})`);
-  if(lab.length) out.push(`Labor: ${lab.join('; ')}.`);
-
-  const infl=[]; if(Number.isFinite(v('CPIAUCSL'))) infl.push(`CPI (s${Math.round(s('CPIAUCSL')||0)})`);
-  if(Number.isFinite(v('CPILFESL'))) infl.push(`Core (s${Math.round(s('CPILFESL')||0)})`);
-  if(Number.isFinite(v('PCEPI'))) infl.push(`PCE (s${Math.round(s('PCEPI')||0)})`);
-  if(infl.length) out.push(`Inflation: ${infl.join(', ')}.`);
-  const mv=[]; if(Number.isFinite(v('SP500'))) mv.push(`S&P ${asNum(v('SP500'))}`);
-  if(Number.isFinite(v('VIXCLS'))) mv.push(`VIX ${asNum(v('VIXCLS'))} (s${Math.round(s('VIXCLS')||0)})`);
-  if(Number.isFinite(v('BUFFETT'))) mv.push(`Buffett ${asPct(v('BUFFETT'))} (s${Math.round(s('BUFFETT')||0)})`);
-  if(mv.length) out.push(`Markets: ${mv.join('; ')}.`);
-  if(Number.isFinite(v('DTWEXBGS'))) out.push(`USD score ${Math.round(s('DTWEXBGS')||0)}.`);
-  const sc=scored.map(r=>r.score);
-  const breadth=!sc.length?'insufficient':(sc.filter(x=>x>70).length>=sc.length*0.5?'broadly elevated':(sc.filter(x=>x<40).length>=sc.length*0.5?'broadly benign':'mixed'));
-  out.push(`Read: ${band} with ${breadth} breadth. Watch curve shape, HY spreads, and claims for direction.`);
-  return out.join('\n');
-}
-
-/* ========== weights & run ========== */
-function normalizeWeights(mode,rows){
-  let base; if(mode==='simple'){ base={}; rows.forEach(r=>{ if(r.score!=null) base[r.id]=1; }); }
-  else if(mode==='basic'||mode==='advanced'){ base={...WEIGHTS[mode]}; }
-  else { try{ base=JSON.parse($('#custom').value||'{}'); }catch{ base={}; } }
-  const usable=rows.filter(r=>r.score!=null).map(r=>r.id);
-  const w={}; usable.forEach(id=> w[id]=Math.max(0,+base[id] || (mode==='simple'?1:0)));
-  let sum=Object.values(w).reduce((a,b)=>a+b,0); if(sum<=0){ usable.forEach(id=>w[id]=1); sum=usable.length; }
-  Object.keys(w).forEach(id=> w[id]/=sum); return w;
-}
-
-async function run(){
-  const key=$('#apiKey').value.trim(); if(!key){ alert('Enter your FRED API key'); return; }
-  localStorage.setItem('FRED_KEY',key);
-  $('#runBtn').disabled=true; $('#runBtn').textContent='Loading…';
-  $('#execBody').textContent='Fetching…'; setGauge(0);
-
-  try{
-    const base=await Promise.all(SERIES.map(async meta=>{
-      if(meta.id==='BUFFETT'){
-        const series=await buffettRatio(key); const latest=lastNumeric(series);
-        const win=tenYearWindow(series); const p=pctRank(latest?.value,win);
-        const score = Number.isFinite(p)? (meta.invert?100-p:p) : null;
-        const row={id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,latest,score};
-        row.display=latest? (latest.value.toFixed(2)+'%'):'—';
-        return row;
-      } else if(meta.id==='SP500'){
-        const series=await fredSeries('SP500',key,12); const latest=lastNumeric(series);
-        return {id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,latest,score:null,
-          display: latest? (Math.round(latest.value).toLocaleString()):'—'};
-      } else {
-        const series=await fredSeries(meta.id,key,11); const latest=lastNumeric(series);
-        const win=tenYearWindow(series); const p=pctRank(latest?.value,win);
-        const score = Number.isFinite(p)? (meta.invert?100-p:p) : null;
-        const row={id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,latest,score};
-        row.display=latest? fmtValue(row):'—'; return row;
+// Concurrency runner
+async function runPool(items, limit, worker){
+  const ret = [];
+  let i=0; let active=0;
+  return await new Promise(resolve=>{
+    const next = ()=>{
+      if(i===items.length && active===0) return resolve(ret);
+      while(active<limit && i<items.length){
+        const idx=i++; active++;
+        worker(items[idx]).then(v=>ret[idx]=v).catch(e=>ret[idx]=null).finally(()=>{active--; next();});
       }
-    }));
-    state.rows=base; state.fetchedAt=new Date();
+    };
+    next();
+  });
+}
 
-    const mode=$('#weightMode').value; const weights=normalizeWeights(mode,base);
-    const scored=base.filter(r=>r.score!=null);
-    const crc=Math.round(scored.reduce((a,r)=>a+(r.score*(weights[r.id]??0)),0));
-    setGauge(crc);
-    const modeName=({simple:'Simple (equal)',basic:'Basic (balanced)',advanced:'Advanced (predictive tilt)',custom:'Custom'})[mode];
-    const narrative=buildNarrative(base,crc,modeName);
-    $('#execBody').textContent=narrative;
-    $('#lastUpdated').textContent=`Last run: ${state.fetchedAt.toLocaleString()} • Data cadence varies (daily/weekly/monthly).`;
-
-    // History
-    const hist=JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
-    hist.unshift({ts:state.fetchedAt.toLocaleString(),crc,mode:modeName,text:narrative});
-    localStorage.setItem('CRC_HISTORY',JSON.stringify(hist.slice(0,10)));
-
-    // UI
-    updateHistory();
-    const cards=$('#cards'); cards.innerHTML=''; base.sort((a,b)=>(b.score??-1)-(a.score??-1));
-    base.forEach(r=>cards.appendChild(makeCard(r)));
-    applyAlerts(crc, base);
-    buildCalendar(base);
-
-    // Chart init + default overlays
-    initChart();
-    ['SP500','DGS10','T10Y2Y','BAMLH0A0HYM2','UNRATE','BUFFETT'].forEach(id=>{
-      if(state.cache[id]?.length) state.chart.data.datasets.push(datasetFor(id));
-    });
-    state.chart.update(); redrawLegend();
-
-  }catch(e){
-    console.error(e); $('#execBody').textContent='Load error (proxy limits or network). Try again.';
-  }finally{
-    $('#runBtn').disabled=false; $('#runBtn').textContent='Run / Refresh';
+// Percentile (vs last 10y)
+function percentile(values, v){
+  const arr = values.filter(x=>x!=null && !isNaN(x)).sort((a,b)=>a-b);
+  if(!arr.length) return null;
+  let lo=0, hi=arr.length-1;
+  if(v<=arr[0]) return 0;
+  if(v>=arr[hi]) return 100;
+  while(hi-lo>1){
+    const mid=(lo+hi)>>1;
+    if(arr[mid]<=v) lo=mid; else hi=mid;
   }
+  return (lo/(arr.length-1))*100;
 }
 
-/* ========== Alerts ========== */
-function getAlertCfg(){
-  const cfg=JSON.parse(localStorage.getItem('CRC_ALERTS')||'{}');
-  return {
-    crc:+($('#a_crc').value||cfg.crc||70),
-    twoTen:+($('#a_2s10s').value||cfg.twoTen||0),
-    oas:+($('#a_oas').value||cfg.oas||5),
-    vix:+($('#a_vix').value||cfg.vix||25),
-    claims:+($('#a_claims').value||cfg.claims||300),
-    buffett:+($('#a_buffett').value||cfg.buffett||150),
-  };
-}
-function saveAlertCfg(){
-  const cfg=getAlertCfg(); localStorage.setItem('CRC_ALERTS',JSON.stringify(cfg));
-  alert('Alerts saved');
-}
-$('#saveAlerts').addEventListener('click',saveAlertCfg);
-function applyAlerts(crc, rows){
-  const a = getAlertCfg(), chip = (txt,band) => `<span class="chip ${band}">${txt}</span>`;
-  const byId = Object.fromEntries(rows.map(r=>[r.id,r]));
-  const v = id => byId[id]?.latest?.value;
-  const out = [];
-  if (crc>=a.crc) out.push(chip(`CRC ≥ ${a.crc}`, 'red'));
-  if (Number.isFinite(v('T10Y2Y')) && v('T10Y2Y')<=a.twoTen) out.push(chip(`2s10s ≤ ${a.twoTen}%`, 'amber'));
-  if (Number.isFinite(v('BAMLH0A0HYM2')) && v('BAMLH0A0HYM2')>=a.oas) out.push(chip(`HY OAS ≥ ${a.oas}%`, 'red'));
-  if (Number.isFinite(v('VIXCLS')) && v('VIXCLS')>=a.vix) out.push(chip(`VIX ≥ ${a.vix}`, 'amber'));
-  if (Number.isFinite(v('ICSA')) && v('ICSA')>=a.claims*1000) out.push(chip(`Claims ≥ ${a.claims}k`, 'amber'));
-  if (Number.isFinite(v('BUFFETT')) && v('BUFFETT')>=a.buffett) out.push(chip(`Buffett ≥ ${a.buffett}%`, 'amber'));
-  $('#alerts').innerHTML = out.join(' ');
+// Exec summary (dynamic)
+function buildSummary(scores, deltas, rag, meta){
+  const up = [], down = [];
+  const add = (arr,label)=>arr.push(label);
+  const s = id => scores[id]?.score;
+
+  // drivers up (risk up = higher score)
+  if(s('DGS10')>80) add(up,`10‑year yield near the top of its decade range`);
+  if(s('T10Y3M')>70||s('T10Y2Y')>70) add(up,`curve tightness still elevated`);
+  if(s('BAMLH0A0HYM2')>65||s('NFCI')>60||s('STLFSI4')>60) add(up,`credit stress rising`);
+  if(s('BUFFETT')>70) add(up,`valuations rich vs GDP`);
+
+  // drivers down
+  if(s('VIXCLS')<35) add(down,`volatility subdued`);
+  if(s('UNRATE')<55 && s('ICSA')<55) add(down,`labor remains a buffer`);
+  if(s('INDPRO')<40 && s('TCU')<50) add(down,`real‑activity softness not broad‑based`);
+
+  const chg = [];
+  Object.entries(deltas).forEach(([id,d])=>{
+    if(Math.abs(d)>=6){
+      const label = INDICATORS.find(x=>x.id===id)?.name || id;
+      chg.push(`${label} ${d>0?'↑':'↓'} ${Math.abs(d).toFixed(0)} pts`);
+    }
+  });
+
+  const lead = `CRC ${meta.crc.toFixed(0)} — ${rag}. A higher CRC means broader, elevated crash vulnerability versus each indicator’s own last‑decade history.`;
+
+  const upLine = up.length? `Drivers ↑: ${up.slice(0,3).join(' · ')}.` : '';
+  const downLine = down.length? `Offsets ↓: ${down.slice(0,3).join(' · ')}.` : '';
+  const chgLine = chg.length? `Since last run: ${chg.slice(0,5).join(' · ')}.` : '';
+  const watch = `Watch next: curve steepening (front stable, long rates ↑), a decisive jump in HY OAS / stress gauges, and a turn higher in claims confirming softer labor.`;
+
+  return [lead, upLine, downLine, chgLine, watch].filter(Boolean).join(' ');
 }
 
-/* ========== Calendar ========== */
-function buildCalendar(rows){
-  const byId=Object.fromEntries(rows.map(r=>[r.id,r]));
-  const last = id => byId[id]?.latest?.date;
-  const nexts=[];
-  [['ICSA','Weekly ~ Thu'],['CPIAUCSL','Monthly'],['UNRATE','Monthly'],['INDPRO','Monthly'],
-   ['RSAFS','Monthly'],['HOUST','Monthly'],['PERMIT','Monthly'],['PCEPI','Monthly'],
-   ['STLFSI4','Weekly'],['NFCI','Weekly'],['SP500','Daily'],['DGS10','Daily'],['VIXCLS','Daily']]
-   .forEach(([id, cadence])=>{
-     if(last(id)) nexts.push(`${id}: next ${cadence} after ${last(id)}`);
-   });
-  const imported = JSON.parse(localStorage.getItem('CRC_CAL')||'[]');
-  const urlSaved = localStorage.getItem('CRC_CAL_URL')||'';
-  $('#calUrl').value = urlSaved || $('#calUrl').value;
-  const txt = (urlSaved?`URL: ${urlSaved}\n\n`:'') + (imported.length? 'Imported:\n'+imported.join('\n')+'\n\n':'') + (nexts.length? 'Auto:\n'+nexts.join('\n'):'');
-  $('#calendarList').textContent = txt || '—';
-}
-$('#importCal').addEventListener('click', async ()=>{
-  const url = $('#calUrl').value.trim(); if(!url) return alert('Paste a calendar web address first');
-  try{
-    localStorage.setItem('CRC_CAL_URL', url);
-    const prox = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const txt = await fetch(prox).then(r=>r.text());
-    const lines = txt.split(/\r?\n/).filter(Boolean).slice(0,80);
-    localStorage.setItem('CRC_CAL', JSON.stringify(lines));
-    buildCalendar(state.rows);
-  }catch(e){ console.error(e); alert('Import failed'); }
-});
-$('#openCal').addEventListener('click', ()=>{
-  const url = $('#calUrl').value.trim(); if(!url) return alert('Paste a calendar web address first');
-  localStorage.setItem('CRC_CAL_URL', url);
-  window.open(url, '_blank');
-});
-$('#clearCal').addEventListener('click', ()=>{
-  localStorage.removeItem('CRC_CAL'); localStorage.removeItem('CRC_CAL_URL');
-  $('#calUrl').value=''; buildCalendar(state.rows);
-});
-
-/* ========== Chart.js with axes + zoom ========== */
-function colorCycle(i){ return ['#6aa3ff','#ff6ad5','#ffd369','#2dd4bf','#ff9f43'][i%5]; }
-function datasetFor(id){
-  const arr = state.cache[id]||[];
-  return {
-    label: id,
-    data: arr.map(d=>({x: new Date(d.date), y: d.value})),
-    borderColor: colorCycle(state.chart?.data?.datasets?.length||0),
-    borderWidth: 2, pointRadius: 0, spanGaps: true
-  };
-}
-function initChart(){
+// Chart
+let chart;
+function renderChart(label, series){
   const ctx = document.getElementById('chart').getContext('2d');
-  if(state.chart){ state.chart.destroy(); }
-  state.chart = new Chart(ctx, {
-    type: 'line',
-    data: { datasets: [] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'nearest', intersect: false },
-      scales: {
-        x: { type: 'time', time: { unit: 'month' }, title: { display: true, text: 'Date', color: '#cfe0ff' },
-             ticks: { color: '#95a3be' }, grid: { color: '#1e2a40' } },
-        y: { title: { display: true, text: 'Value', color: '#cfe0ff' },
-             ticks: { color: '#95a3be' }, grid: { color: '#1e2a40' } }
+  const labels = series.map(x=>x.date);
+  const data = series.map(x=>x.value==null?null:+x.value);
+  if(chart) chart.destroy();
+  chart = new Chart(ctx,{
+    type:'line',
+    data:{ labels, datasets:[{label, data, borderColor:'#53a1ff', pointRadius:0, tension:.15}]},
+    options:{
+      animation:false,
+      parsing:false,
+      responsive:true,
+      scales:{
+        x:{ ticks:{ maxTicksLimit:7 }, grid:{ color:'#1c2a3a' } },
+        y:{ grid:{ color:'#1c2a3a' } }
       },
-      plugins: {
-        legend: { labels: { color: '#cfe0ff' } },
-        zoom: { pan: { enabled: true, mode: 'xy' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' } }
+      plugins:{
+        legend:{ labels:{ color:'#cfe1ff' } },
+        zoom:{
+          pan:{ enabled:true, mode:'xy' },
+          zoom:{ wheel:{enabled:true}, pinch:{enabled:true}, mode:'xy' }
+        },
+        tooltip:{ intersect:false, mode:'index' }
       }
     }
   });
 }
-function redrawLegend(){
-  const legend = $('#legend'); legend.innerHTML='';
-  state.chart.data.datasets.forEach(ds=>{
-    const color = ds.borderColor; const last = ds.data[ds.data.length-1] || {};
-    const val = (last?.y!=null) ? (Math.abs(last.y)>=1000?Math.round(last.y).toLocaleString(): (last.y.toFixed? last.y.toFixed(2): last.y)) : '—';
-    const el = document.createElement('div'); el.className='key';
-    el.innerHTML = `<span class="sw" style="background:${color}"></span>${ds.label}<span class="miniMeta"> ${val} ${last?.x? '('+new Date(last.x).toISOString().slice(0,10)+')':''}</span>`;
-    legend.appendChild(el);
+
+// Cards renderer
+function renderCards(map){
+  const el = $('#cards'); el.innerHTML='';
+  INDICATORS.forEach(ind=>{
+    const d = map[ind.id] || {};
+    const card = document.createElement('div'); card.className='card';
+    const val = d.value==null?'—': (ind.fmt==='pct'? (+d.value).toFixed(2)+'%' :
+                                   ind.fmt==='int'? (+d.value).toLocaleString():
+                                   ind.fmt==='index'? (+d.value).toLocaleString():
+                                   ind.fmt==='idx'? (+d.value).toFixed(3):
+                                   String(d.value));
+    const score = d.score==null ? '—' : Math.round(d.score);
+    const date = d.date || '—';
+    card.innerHTML = `
+      <div class="top">
+        <div class="title" style="font-size:18px">${ind.name}</div>
+        <span class="chip">${ind.synthetic? 'synthetic':' '+ind.id}</span>
+      </div>
+      <div class="value">${val}</div>
+      <div class="score">score ${score} • <small class="muted">${date}</small></div>
+      <div class="help">${ind.desc}</div>`;
+    el.appendChild(card);
   });
 }
-$('#addSeries').addEventListener('click', ()=>{
-  const id = $('#chartSeries').value;
-  if(state.chart.data.datasets.some(d=>d.label===id)) return;
-  if(state.chart.data.datasets.length>=5) return alert('Max 5 overlays');
-  state.chart.data.datasets.push(datasetFor(id));
-  state.chart.update(); redrawLegend();
-});
-$('#resetSeries').addEventListener('click', ()=>{
-  state.chart.data.datasets = [];
-  state.chart.update(); redrawLegend();
-});
-$('#refreshChart').addEventListener('click', ()=>{
-  initChart();
-  ['SP500','DGS10','T10Y2Y','BAMLH0A0HYM2','UNRATE','BUFFETT'].forEach(id=>{
-    if(state.cache[id]?.length) state.chart.data.datasets.push(datasetFor(id));
+
+// Gauge
+function setGauge(crc){
+  const clamp = Math.max(0,Math.min(100,crc));
+  const color = clamp<40? 'var(--green)': clamp>70? 'var(--red)': 'var(--amber)';
+  const ringPct = Math.max(6, clamp); // small min arc so it’s visible
+  const gauge = $('#gauge');
+  gauge.style.setProperty('--gaugeColor', color);
+  gauge.style.setProperty('--gaugePct', ringPct+'%');
+  $('#gNum').textContent = Math.round(clamp);
+  $('#crcBadge').textContent = `CRC: ${Math.round(clamp)} — ${clamp<40?'GREEN':clamp>70?'RED':'AMBER'}`;
+}
+
+// Buffett ratio (Wilshire / GDP)
+async function buffettSeries(api_key){
+  const k='BUFFETT_SER';
+  const c = cacheGet(k);
+  if(c) return c;
+  // Wilshire (daily), GDP (quarterly). Carry forward GDP; compute ratio; then monthly sample.
+  const wil = await fredSeries('WILL5000IND', api_key);
+  const gdp = await fredSeries('GDP', api_key);
+
+  const gdpMap = {};
+  gdp.observations.forEach(o=>{
+    const v = parseFloat(o.value);
+    if(!isNaN(v)) gdpMap[o.date]=v;
   });
-  state.chart.update(); redrawLegend();
-});
 
-/* ========== Drilldown modal ========== */
-const modal=$('#modal'), mTitle=$('#mTitle'), mMeta=$('#mMeta'), mSpark=$('#mSpark'), mExplainer=$('#mExplainer');
-$('#closeModal').addEventListener('click',()=>modal.classList.remove('show'));
-function openDrill(row){
-  mTitle.textContent=`${row.name} — ${row.id}`;
-  const scoreTxt=Number.isFinite(row.score)? `score ${Math.round(row.score)}`:'context only';
-  mMeta.textContent=`${row.latest?.date||'—'} • ${row.display||'—'} • ${scoreTxt}`;
-  mExplainer.textContent=explain[row.id]||'—';
-  drawSpark(row.id); modal.classList.add('show');
-}
-function drawSpark(id){
-  const ctx=mSpark.getContext('2d'); ctx.clearRect(0,0,mSpark.width,mSpark.height);
-  const data=(state.cache[id]||[]).slice(-250);
-  if(!data.length){ ctx.fillStyle='#9fb3d9'; ctx.font='12px Inter'; ctx.fillText('No data yet.',8,18); return; }
-  const padL=24,padR=8,padT=8,padB=20,W=mSpark.width,H=mSpark.height;
-  const xs=data.map(d=>+new Date(d.date)), ys=data.map(d=>d.value);
-  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
-  const x=t=> padL+(t-minX)/(maxX-minX)*(W-padL-padR);
-  const y=v=> padT+(1-(v-minY)/(maxY-minY))*(H-padT-padB);
-  ctx.strokeStyle='#1a2536'; for(let i=1;i<3;i++){ const yy=padT+i*(H-padT-padB)/3; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
-  ctx.strokeStyle='#6aa3ff'; ctx.lineWidth=2; ctx.beginPath();
-  data.forEach((d,i)=>{ const xi=x(+new Date(d.date)), yi=y(d.value); i?ctx.lineTo(xi,yi):ctx.moveTo(xi,yi); });
-  ctx.stroke();
+  // Carry-forward GDP
+  let lastGDP=null;
+  const daily = wil.observations.map(o=>{
+    const v = parseFloat(o.value);
+    if(isNaN(v)) return null;
+    // find nearest previous GDP date
+    if(gdpMap[o.date]!=null) lastGDP = gdpMap[o.date];
+    return lastGDP ? {date:o.date, value: v/lastGDP*100 } : null; // % of GDP (scale not important; percentile handles)
+  }).filter(Boolean);
+
+  // Downsample to monthly end
+  const byMonth = {};
+  daily.forEach(x=>{
+    const m = x.date.slice(0,7)+'-28'; // rough month key, we’ll keep last seen
+    byMonth[m]=x;
+  });
+  const series = Object.values(byMonth).sort((a,b)=>a.date.localeCompare(b.date));
+  cacheSet(k, series);
+  return series;
 }
 
-/* ========== boot ========== */
+// Run
+async function run(){
+  const api_key = $('#key').value.trim();
+  if(!api_key){ alert('Enter your FRED API key'); return; }
+  setKey(api_key);
+  $('#run').disabled = true;
+
+  const mode = $('#weightMode').value;
+  localStorage.setItem(WEIGHT_MODE_KEY, mode);
+  const weights = weightMap(mode);
+
+  const last = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+
+  const seriesToFetch = INDICATORS.filter(s=>!s.exclude && !s.synthetic).map(s=>s.id);
+  const results = {};
+
+  // pull real series (concurrent)
+  await runPool(seriesToFetch, CONCURRENCY, async (sid)=>{
+    try{
+      const j = await fredSeries(sid, api_key);
+      const obs = j.observations.map(o=>{
+        const v = parseFloat(o.value); return {date:o.date, value: isNaN(v)? null: v};
+      }).filter(Boolean);
+      results[sid] = obs;
+    }catch(e){ results[sid]=null; }
+  });
+
+  // synthetic Buffett
+  try{ results['BUFFETT'] = await buffettSeries(api_key); } catch(e){ results['BUFFETT']=null; }
+
+  // compute latest + percentile scores
+  const scores = {};
+  for(const ind of INDICATORS){
+    const arr = results[ind.id];
+    if(!arr || !arr.length){ scores[ind.id]={score:null,value:null,date:null}; continue; }
+    const values = arr.map(x=>x.value).filter(v=>v!=null);
+    const latest = arr[arr.length-1];
+    let p = percentile(values, latest.value);
+    if(p==null) { scores[ind.id]={score:null,value:null,date:latest.date}; continue; }
+    if(ind.invert) p = 100 - p;
+    scores[ind.id] = { score:p, value:latest.value, date:latest.date };
+  }
+
+  // weighted CRC
+  let num=0, den=0;
+  Object.entries(scores).forEach(([id,obj])=>{
+    if(obj.score==null) return;
+    const w = weights[id]||0;
+    if(w<=0) return;
+    num += obj.score * w;
+    den += w;
+  });
+  const crc = den>0 ? num/den : 0;
+
+  // deltas vs last run
+  const deltas = {};
+  Object.keys(scores).forEach(id=>{
+    const cur = scores[id]?.score;
+    const prev = last.scores?.[id]?.score;
+    if(cur==null || prev==null) return;
+    deltas[id] = cur - prev;
+  });
+
+  // render gauge + meta
+  const rag = crc<40?'GREEN': crc>70?'RED':'AMBER';
+  setGauge(crc);
+  $('#runMeta').textContent = `Last run: ${new Date().toLocaleString()} • Data cadence varies (daily/weekly/monthly).`;
+
+  // exec summary
+  const summaryText = buildSummary(scores, deltas, rag, {crc});
+  $('#summary').textContent = summaryText;
+
+  // cards
+  renderCards(scores);
+
+  // chart default
+  const chartSel = $('#chartSel').value;
+  if(chartSel==='BUFFETT'){
+    renderChart('Buffett Ratio', results['BUFFETT']||[]);
+  }else{
+    renderChart(chartSel, results[chartSel]||[]);
+  }
+
+  // history
+  const hist = last.history || [];
+  hist.push({t:Date.now(), crc});
+  if(hist.length>30) hist.shift();
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({scores, crc, history:hist}));
+  $('#run').disabled = false;
+}
+
+// UI wires
 (function init(){
-  const saved=localStorage.getItem('FRED_KEY'); if(saved) $('#apiKey').value=saved;
-  $('#runBtn').addEventListener('click', run);
-  $('#weightMode').addEventListener('change', e=>$('#customBox').classList.toggle('hidden', e.target.value!=='custom'));
-  $('#toggleHist').addEventListener('click', ()=>{
-    $('#historyBox').classList.toggle('hidden');
-    $('#toggleHist').textContent = $('#historyBox').classList.contains('hidden') ? '📜 Show History' : '📕 Hide History';
+  // preload key & weight mode
+  $('#key').value = getKey();
+  const wm = localStorage.getItem(WEIGHT_MODE_KEY)||'advanced';
+  $('#weightMode').value = wm;
+
+  $('#run').addEventListener('click', run);
+  $('#chartSel').addEventListener('change', async (e)=>{
+    const id = e.target.value;
+    const api_key = $('#key').value.trim();
+    if(!api_key) return;
+    if(id==='BUFFETT'){
+      const s = await buffettSeries(api_key);
+      renderChart('Buffett Ratio', s);
+    }else{
+      const j = await fredSeries(id, api_key);
+      const arr = j.observations.map(o=>({date:o.date, value: parseFloat(o.value)}));
+      renderChart(id, arr);
+    }
   });
+  $('#historyBtn').addEventListener('click', ()=>{
+    const box = $('#history');
+    const last = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+    const hist = last.history||[];
+    if(!hist.length){ box.textContent='No history yet.'; box.classList.remove('hidden'); return; }
+    const lines = hist.slice(-20).map(h=>`${new Date(h.t).toLocaleString()}: CRC ${h.crc.toFixed(0)}`);
+    box.textContent = lines.join('\n');
+    box.classList.toggle('hidden');
+  });
+
+  // auto-run if key present
+  if($('#key').value) run();
 })();
 </script>
 </body>
