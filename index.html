@@ -6,26 +6,37 @@
 <title>The Marshall Stock Market Crash Composite Indicator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Chart.js + Time adapter + Zoom plugin -->
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.umd.min.js"></script>
 <style>
   :root{
     --bg:#0d1420;--panel:#121a28;--soft:#0e1724;--muted:#95a3be;--text:#e9f0ff;
     --chip:#24324a;--chipText:#cfe0ff;--ringTrack:#1e2a40;
     --green:#17c27d;--amber:#f5a524;--red:#ef4444;--accent:#4c82ff;
     --card:#0f1625;--cardBorder:#1d2a3b;--shadow:0 10px 28px rgba(0,0,0,.25);
+    --blue:#6aa3ff; --pink:#ff6ad5; --yellow:#ffd369; --teal:#2dd4bf; --orange:#ff9f43;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:980px;margin:0 auto;padding:24px 14px 100px}
+  .wrap{max-width:980px;margin:0 auto;padding:22px 14px 110px}
   h1{margin:0 0 8px;font-size:clamp(22px,5.6vw,40px);line-height:1.1;font-weight:800;letter-spacing:.2px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
   input,select,button,textarea{font:600 15px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  input.api{flex:1;min-width:240px;background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
+  input.api, input.text{flex:1;min-width:240px;background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
     padding:12px 14px;border-radius:12px}
   select.mode{background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
     padding:10px 12px;border-radius:12px}
-  button.run{background:var(--accent);border:0;color:#fff;border-radius:12px;padding:12px 16px;font-weight:800}
+  button.run,.btn{background:var(--accent);border:0;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800}
+  .btn.alt{background:#22314a;color:#cfe0ff;border:1px solid #2b3b58}
   .panel{background:var(--panel);border:1px solid var(--ringTrack);border-radius:18px;padding:16px;margin-top:12px;box-shadow:var(--shadow)}
   .flex{display:flex;gap:16px;align-items:center}
+  .muted{color:var(--muted)} .miniMeta{color:#bcd2ff;font-size:12px}
+  .hidden{display:none!important}
+
+  /* Gauge */
   .gauge{position:relative;width:120px;height:120px;min-width:120px}
   .gauge svg{transform:rotate(-90deg)}
   .gauge .track{stroke:var(--ringTrack)}
@@ -35,9 +46,19 @@
   .badge.green{background:#123524;color:#98f1c7;border:1px solid #1f7b58}
   .badge.amber{background:#3b2a0a;color:#ffd48f;border:1px solid #6b4b12}
   .badge.red{background:#3a1313;color:#ffbbbb;border:1px solid #6e2b2b}
-  .muted{color:var(--muted)}
-  .miniMeta{color:#bcd2ff;font-size:12px}
 
+  /* Alerts ribbon */
+  .alerts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{background:var(--chip);color:var(--chipText);border-radius:999px;padding:6px 10px;font-size:12px;border:1px solid #2b3b58}
+  .chip.red{background:#3a1313;color:#ffbbbb;border-color:#6e2b2b}
+  .chip.amber{background:#3b2a0a;color:#ffd48f;border-color:#6b4b12}
+  .chip.green{background:#123524;color:#98f1c7;border-color:#1f7b58}
+
+  /* Exec */
+  .exec h2{margin:10px 0 6px;font-size:20px}
+  .exec .body{font-size:16px;line-height:1.7;white-space:pre-wrap}
+
+  /* Grid cards */
   .grid{display:grid;gap:12px}
   @media(min-width:720px){.grid{grid-template-columns:1fr 1fr}}
   .card{background:var(--card);border:1px solid var(--cardBorder);border-radius:14px;padding:14px;cursor:pointer}
@@ -46,15 +67,19 @@
   .id{background:var(--chip);color:var(--chipText);border-radius:999px;padding:4px 8px;font-size:12px}
   .val{font-size:30px;font-weight:800;letter-spacing:.2px}
 
-  .exec h2{margin:10px 0 6px;font-size:20px}
-  .exec .body{font-size:16px;line-height:1.7;white-space:pre-wrap}
-
   /* Chart */
   .chartHead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
-  .chartWrap{position:relative;height:260px;touch-action:none}
-  canvas{display:block;width:100%;height:100%;border-radius:10px;background:#0b1420;border:1px solid #1c2a3a}
-  .btn{background:#22314a;color:#cfe0ff;border:1px solid #2b3b58;border-radius:10px;padding:8px 10px;font-weight:700}
-  .hidden{display:none!important}
+  .chartWrap{position:relative;height:320px}
+  #chart{display:block;width:100%;height:100%;border-radius:10px;background:#0b1420;border:1px solid #1c2a3a}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .key{display:flex;align-items:center;gap:6px;font-size:12px;color:#cfe0ff;background:#1a2436;border:1px solid #273452;border-radius:999px;padding:4px 8px}
+  .sw{width:10px;height:10px;border-radius:2px}
+
+  /* Settings panels */
+  .settingsGrid{display:grid;gap:10px}
+  @media(min-width:800px){.settingsGrid{grid-template-columns:1fr 1fr}}
+  .kv{display:grid;grid-template-columns:1fr 110px;gap:8px;align-items:center}
+  .small{font-size:12px}
 
   /* Modal */
   .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5);z-index:20}
@@ -69,6 +94,7 @@
 <div class="wrap">
   <h1>The Marshall Stock Market Crash Composite Indicator</h1>
 
+  <!-- Controls -->
   <div class="row">
     <input id="apiKey" class="api" placeholder="YOUR_FRED_API_KEY" autocomplete="off">
     <select id="weightMode" class="mode" title="Weighting">
@@ -82,11 +108,11 @@
 
   <!-- Custom weights -->
   <div id="customBox" class="panel hidden">
-    <div class="muted">Paste weights JSON (keys are series IDs). Unknown IDs ignored; weights renormalized to what loaded.</div>
-    <textarea id="custom" spellcheck="false" placeholder='{"T10Y2Y":0.2,"T10Y3M":0.2,"BAMLH0A0HYM2":0.2,"STLFSI4":0.1,"NFCI":0.1,"UNRATE":0.05,"ICSA":0.05,"VIXCLS":0.05,"BUFFETT":0.05}'></textarea>
+    <div class="muted">Paste weights JSON (unknown IDs ignored; weights renormalized to what loaded).</div>
+    <textarea id="custom" class="text" spellcheck="false" placeholder='{"T10Y2Y":0.2,"T10Y3M":0.2,"BAMLH0A0HYM2":0.2,"STLFSI4":0.1,"NFCI":0.1,"UNRATE":0.05,"ICSA":0.05,"VIXCLS":0.05,"BUFFETT":0.05}'></textarea>
   </div>
 
-  <!-- CRC + Executive summary -->
+  <!-- CRC + Executive summary + Alerts -->
   <section class="panel exec">
     <div class="flex">
       <div class="gauge">
@@ -102,11 +128,14 @@
         <div id="lastUpdated" class="miniMeta" style="margin-top:6px"></div>
       </div>
     </div>
+
+    <div class="alerts" id="alerts"></div>
+
     <h2>Executive Summary</h2>
-    <div id="execBody" class="body muted">Paste your key and press Run. The narrative will auto-generate from live readings.</div>
+    <div id="execBody" class="body muted">Paste your key and press Run. The narrative will auto-generate.</div>
 
     <div style="margin-top:14px">
-      <button id="toggleHist" class="btn">📜 Show History</button>
+      <button id="toggleHist" class="btn alt">📜 Show History</button>
       <span id="histCount" class="miniMeta"></span>
     </div>
     <div id="historyBox" class="hidden" style="margin-top:10px"></div>
@@ -116,31 +145,78 @@
   <section class="panel">
     <div class="chartHead">
       <div>
-        <strong>FRED Line Chart (pinch-zoom & pan)</strong>
-        <div id="chartMeta" class="miniMeta">Two fingers: zoom • One finger: pan • Double-tap: reset</div>
+        <strong>FRED Line Chart (multi-overlay • pinch-zoom & pan)</strong>
+        <div class="miniMeta">Two fingers: zoom • One finger: pan • Double-tap: reset • Up to 5 overlays</div>
       </div>
-      <div>
+      <div class="row" style="gap:6px">
         <select id="chartSeries" class="mode">
-          <option value="SP500">SP500 (daily)</option>
-          <option value="DGS10">DGS10 (10Y yield)</option>
-          <option value="T10Y2Y">T10Y2Y (10Y–2Y)</option>
-          <option value="T10Y3M">T10Y3M (10Y–3M)</option>
-          <option value="BAMLH0A0HYM2">HY OAS</option>
-          <option value="VIXCLS">VIX</option>
-          <option value="BUFFETT">Buffett ratio</option>
+          <option value="SP500">SP500</option><option value="DGS10">DGS10</option>
+          <option value="T10Y2Y">T10Y2Y</option><option value="T10Y3M">T10Y3M</option>
+          <option value="BAMLH0A0HYM2">HY OAS</option><option value="VIXCLS">VIX</option>
+          <option value="BUFFETT">BUFFETT</option><option value="UNRATE">UNRATE</option>
+          <option value="ICSA">ICSA</option><option value="CPIAUCSL">CPI</option>
+          <option value="CPILFESL">Core CPI</option><option value="DTWEXBGS">USD broad</option>
         </select>
-        <button id="refreshChart" class="btn">Refresh Chart</button>
+        <button id="addSeries" class="btn alt">+ Overlay</button>
+        <button id="resetSeries" class="btn alt">Clear</button>
+        <button id="refreshChart" class="btn alt">↻</button>
       </div>
     </div>
-    <div class="chartWrap">
-      <canvas id="chart" width="900" height="400"></canvas>
-    </div>
+    <div class="chartWrap"><canvas id="chart"></canvas></div>
+    <div class="legend" id="legend"></div>
   </section>
 
   <!-- Indicators -->
   <section class="panel">
     <h2 style="margin:0 0 10px">Indicators</h2>
     <div id="cards" class="grid"></div>
+  </section>
+
+  <!-- Alerts + Calendar + Views -->
+  <section class="panel">
+    <h2 style="margin:0 0 10px">Alerts • Calendar • Views</h2>
+    <div class="settingsGrid">
+      <!-- Alerts -->
+      <div class="card" style="cursor:default">
+        <h3 style="margin:0 0 8px;font-size:16px">Alert thresholds</h3>
+        <div class="kv"><span>CRC ≥</span><input id="a_crc" class="text" type="number" value="70"></div>
+        <div class="kv"><span>2s10s ≤</span><input id="a_2s10s" class="text" type="number" step="0.01" value="0"></div>
+        <div class="kv"><span>HY OAS ≥</span><input id="a_oas" class="text" type="number" step="0.1" value="5"></div>
+        <div class="kv"><span>VIX ≥</span><input id="a_vix" class="text" type="number" step="0.1" value="25"></div>
+        <div class="kv"><span>Claims ≥ (000s)</span><input id="a_claims" class="text" type="number" value="300"></div>
+        <div class="kv"><span>Buffett ≥</span><input id="a_buffett" class="text" type="number" step="1" value="150"></div>
+        <div class="row" style="margin-top:6px">
+          <button id="saveAlerts" class="btn alt">Save Alerts</button>
+          <span class="miniMeta">Stored locally</span>
+        </div>
+      </div>
+
+      <!-- Calendar -->
+      <div class="card" style="cursor:default">
+        <h3 style="margin:0 0 8px;font-size:16px">Economic calendar</h3>
+        <div class="miniMeta">Auto-estimates next dates from last observations; add an ICS/JSON URL to import real events (optional).</div>
+        <div class="kv"><span>Import URL (ICS/JSON)</span><input id="calUrl" class="text" placeholder="https://…"></div>
+        <div class="row" style="margin-top:6px">
+          <button id="importCal" class="btn alt">Import</button>
+          <button id="clearCal" class="btn alt">Clear</button>
+        </div>
+        <div id="calendarList" class="small" style="margin-top:8px;white-space:pre-wrap"></div>
+      </div>
+
+      <!-- Views -->
+      <div class="card" style="cursor:default">
+        <h3 style="margin:0 0 8px;font-size:16px">Saved Views</h3>
+        <div class="miniMeta">Save your weighting, alerts & overlays. Share via link.</div>
+        <div class="kv"><span>View name</span><input id="viewName" class="text" placeholder="My Amber Watch"></div>
+        <div class="row" style="margin-top:6px">
+          <button id="saveView" class="btn alt">Save</button>
+          <button id="loadView" class="btn alt">Load</button>
+          <button id="deleteView" class="btn alt">Delete</button>
+          <button id="shareView" class="btn alt">Share link</button>
+        </div>
+        <div class="miniMeta" id="viewsList" style="margin-top:6px"></div>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -156,34 +232,34 @@
 </div>
 
 <script>
-/* ============== SHARED CONFIG ============== */
+/* ====== helpers ====== */
 const $ = s => document.querySelector(s);
 const ringLen = 2*Math.PI*44;
-const state = { rows:[], cache:{}, fetchedAt:null };
+const state = { rows:[], cache:{}, fetchedAt:null, overlays:[], chart:null };
 const explain = {
-  T10Y2Y:'10Y–2Y: shape of the curve. Inversion (below 0) is a classic late-cycle warning; re-steepening via front-end cuts often signals slowdown already underway.',
-  T10Y3M:'10Y–3M: even more policy-sensitive; deep inversions preceded most recessions since the 1960s.',
-  DGS10:'10Y yield: high levels tighten financial conditions and pressure rate-sensitive sectors.',
-  BAMLH0A0HYM2:'High-yield OAS: credit risk premium. Rising spreads often lead equity drawdowns.',
-  STLFSI4:'Financial Stress Index: composite of rates, spreads, vol. Surges mark systemic strain.',
-  NFCI:'National Financial Conditions: positive = tight; negative = loose.',
-  VIXCLS:'VIX: cost of crash insurance. Spikes = risk-off; low = calm (or complacency).',
-  BUFFETT:'Buffett ratio: total U.S. market cap vs GDP. High = expensive market; low = cheaper.',
-  SP500:'S&P 500 index level (context only — not scored).',
-  UNRATE:'Unemployment rate: rising unemployment confirms demand slowdown; lags the cycle.',
-  ICSA:'Initial jobless claims: weekly early-warning for labor softening.',
-  CPIAUCSL:'CPI: headline inflation; higher keeps policy restrictive.',
-  CPILFESL:'Core CPI: strips food/energy; persistent core keeps rates higher for longer.',
-  PCEPI:'PCE Price Index: Fed’s preferred inflation gauge.',
-  INDPRO:'Industrial production: broad factory output; softer = later-cycle cooling.',
-  TCU:'Capacity utilization: lower use of capacity = slack building.',
-  RSAFS:'Retail sales (advance): consumer demand pulse.',
+  T10Y2Y:'10Y–2Y: curve shape; inversion warns late cycle; bear steepening can tighten conditions.',
+  T10Y3M:'10Y–3M: policy-sensitive curve; deep inversions preceded most recessions since 1960s.',
+  DGS10:'10Y yield: higher = tighter financial conditions, pressure on rate-sensitive sectors.',
+  BAMLH0A0HYM2:'High-yield OAS: credit risk premium; widening often leads equity drawdowns.',
+  STLFSI4:'Financial Stress Index: composite of rates/spreads/vol; spikes = systemic strain.',
+  NFCI:'National Financial Conditions: positive=tight; negative=loose.',
+  VIXCLS:'VIX: cost of crash insurance; spikes = risk-off; low = calm/complacency.',
+  BUFFETT:'Buffett ratio: U.S. market cap vs GDP; elevated = expensive on macro lens.',
+  SP500:'S&P 500 index level (context only).',
+  UNRATE:'Unemployment rate: rising levels confirm demand slowdown (lags).',
+  ICSA:'Initial claims: weekly early-warning for labor softness.',
+  CPIAUCSL:'CPI headline: higher keeps policy restrictive.',
+  CPILFESL:'Core CPI: sticky core keeps rates higher for longer.',
+  PCEPI:'PCE prices: Fed’s preferred inflation gauge.',
+  INDPRO:'Industrial production: softness = later-cycle cooling.',
+  TCU:'Capacity utilization: slack building when lower.',
+  RSAFS:'Retail sales (advance): household demand pulse.',
   HOUST:'Housing starts: interest-sensitive leading sector.',
-  PERMIT:'Building permits: forward look for housing.',
-  DTWEXBGS:'Broad trade-weighted USD: stronger dollar tightens global conditions.'
+  PERMIT:'Building permits: forward guide for housing.',
+  DTWEXBGS:'Broad USD index: stronger USD tightens global conditions.'
 };
 
-/* Indicator set (SP500 display-only / weight=0) */
+/* ====== series ====== */
 const SERIES = [
   { id:'T10Y2Y',name:'10Y–2Y spread',invert:true,type:'pct',cat:'curve' },
   { id:'T10Y3M',name:'10Y–3M spread',invert:true,type:'pct',cat:'curve' },
@@ -207,427 +283,446 @@ const SERIES = [
   { id:'DTWEXBGS',name:'Trade-weighted USD (broad)',invert:false,type:'raw',cat:'fx' }
 ];
 
-/* Weighting (Simple = equal by loaded; Basic/Advanced per earlier plan) */
+/* ====== weights ====== */
 const WEIGHTS = {
   simple:null,
   basic:{T10Y2Y:0.10,T10Y3M:0.10,BAMLH0A0HYM2:0.0833,STLFSI4:0.0833,NFCI:0.0833,UNRATE:0.075,ICSA:0.075,INDPRO:0.03,TCU:0.03,RSAFS:0.03,HOUST:0.03,PERMIT:0.03,CPIAUCSL:0.0333,CPILFESL:0.0333,PCEPI:0.0333,VIXCLS:0.05,BUFFETT:0.05,DTWEXBGS:0.03,DGS10:0.02,SP500:0},
   advanced:{T10Y2Y:0.175,T10Y3M:0.175,BAMLH0A0HYM2:0.10,STLFSI4:0.10,NFCI:0.10,UNRATE:0.05,ICSA:0.05,INDPRO:0.016,TCU:0.016,RSAFS:0.016,HOUST:0.016,PERMIT:0.016,CPIAUCSL:0.0167,CPILFESL:0.0167,PCEPI:0.0167,VIXCLS:0.04,BUFFETT:0.03,DTWEXBGS:0.03,DGS10:0.02,SP500:0}
 };
 
-/* ============== FETCH / PROXY ============== */
-const proxiers = [
-  u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  u=>`https://cors.isomorphic-git.org/${u}`
-];
+/* ====== fetch / proxy ====== */
+const proxiers=[u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,u=>`https://cors.isomorphic-git.org/${u}`];
 function fredURL(id,key,start){
   const u = new URL('https://api.stlouisfed.org/fred/series/observations');
-  u.searchParams.set('series_id',id);
-  u.searchParams.set('api_key',key);
-  u.searchParams.set('file_type','json');
+  u.searchParams.set('series_id',id); u.searchParams.set('api_key',key); u.searchParams.set('file_type','json');
   if(start) u.searchParams.set('observation_start',start);
-  u.searchParams.set('limit','100000');
-  u.searchParams.set('_',Date.now().toString()); // cache-buster
+  u.searchParams.set('limit','100000'); u.searchParams.set('_',Date.now().toString());
   return u.toString();
 }
 async function fetchRace(url){
-  const tries = proxiers.map(p=>fetch(p(url),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)));
-  const settled = await Promise.allSettled(tries);
+  const tries=proxiers.map(p=>fetch(p(url),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)));
+  const settled=await Promise.allSettled(tries);
   for(const s of settled){ if(s.status==='fulfilled') return s.value; }
   throw new Error('All proxies failed');
 }
 async function fredSeries(id,key,years=11){
-  const start = new Date(); start.setFullYear(start.getFullYear()-years);
-  const txtStart = start.toISOString().slice(0,10);
-  const j = await fetchRace(fredURL(id,key,txtStart));
-  const obs = (j?.observations||[]).map(o=>({date:o.date,value:o.value})).filter(o=>o.value!=='.');
-  const arr = obs.map(o=>({date:o.date,value:+o.value}));
-  state.cache[id]=arr;
-  return arr;
+  const start=new Date(); start.setFullYear(start.getFullYear()-years);
+  const j=await fetchRace(fredURL(id,key,start.toISOString().slice(0,10)));
+  const obs=(j?.observations||[]).map(o=>({date:o.date,value:o.value})).filter(o=>o.value!=='.');
+  const arr=obs.map(o=>({date:o.date,value:+o.value}));
+  state.cache[id]=arr; return arr;
 }
-
-/* Buffett ratio: robust alignment (Wilshire / GDP) */
+/* Buffett ratio: robust Wilshire↔GDP pairing */
 async function buffettRatio(key){
-  const wil = await fredSeries('WILL5000INDFC',key,12); // Wilshire 5000 Full Cap Daily
-  const gdp = await fredSeries('GDP',key,12);           // Quarterly SAAR
-  if(!wil.length || !gdp.length) return [];
-  // Use quarter-end for GDP; pair with nearest prior Wilshire within 15 days
-  const wilMap = new Map(wil.map(d=>[d.date,d.value]));
-  function nearestWil(dateStr){
-    let t = new Date(dateStr);
-    for(let i=0;i<15;i++){
-      const k = t.toISOString().slice(0,10);
-      if(wilMap.has(k)) return wilMap.get(k);
-      t.setUTCDate(t.getUTCDate()-1);
-    }
-    // fall back: last prior point
-    let prior = null;
-    for(const w of wil){ if(w.date<=dateStr) prior = w; else break; }
-    return prior? prior.value : wil[wil.length-1].value;
+  const wil=await fredSeries('WILL5000INDFC',key,12);
+  const gdp=await fredSeries('GDP',key,12);
+  if(!wil.length||!gdp.length) return [];
+  const map=new Map(wil.map(d=>[d.date,d.value]));
+  function near(d){
+    let t=new Date(d);
+    for(let i=0;i<15;i++){ const k=t.toISOString().slice(0,10); if(map.has(k)) return map.get(k); t.setUTCDate(t.getUTCDate()-1); }
+    let prior=null; for(const w of wil){ if(w.date<=d) prior=w; else break; } return prior?prior.value:wil[wil.length-1].value;
   }
-  const ratio = gdp.map(q=>({date:q.date,value:(nearestWil(q.date)/q.value)*100}))
-                   .filter(x=>Number.isFinite(x.value));
-  state.cache['BUFFETT']=ratio;
-  return ratio;
+  const ratio=gdp.map(q=>({date:q.date,value:(near(q.date)/q.value)*100})).filter(x=>Number.isFinite(x.value));
+  state.cache['BUFFETT']=ratio; return ratio;
 }
 
-/* ============== STATS / SCORING ============== */
+/* ====== stats ====== */
 function lastNumeric(arr){ for(let i=arr.length-1;i>=0;i--){ if(Number.isFinite(arr[i].value)) return arr[i]; } return null; }
 function tenYearWindow(arr){
-  if(!arr.length) return [];
-  const lastDate = new Date(arr[arr.length-1].date);
-  const cut = new Date(lastDate); cut.setFullYear(cut.getFullYear()-10);
+  if(!arr.length) return []; const last=new Date(arr[arr.length-1].date);
+  const cut=new Date(last); cut.setFullYear(cut.getFullYear()-10);
   return arr.filter(d=>new Date(d.date)>=cut);
 }
-function pctRank(latest, sample){
+function pctRank(latest,sample){
   if(!Number.isFinite(latest)||!sample.length) return NaN;
-  const xs = sample.map(x=>x.value).filter(Number.isFinite).sort((a,b)=>a-b);
-  if(!xs.length) return NaN;
-  let lo=0,hi=xs.length;
+  const xs=sample.map(x=>x.value).filter(Number.isFinite).sort((a,b)=>a-b);
+  if(!xs.length) return NaN; let lo=0,hi=xs.length;
   while(lo<hi){ const m=(lo+hi)>>1; if(xs[m]<=latest) lo=m+1; else hi=m; }
   return 100*(lo/xs.length);
 }
 
-/* ============== UI CORE ============== */
+/* ====== UI core ====== */
 function setGauge(n){
-  const pct = Number.isFinite(n)? Math.max(0,Math.min(100,n)) : 0;
-  const offset = ringLen*(1-pct/100);
-  const arc = $('#arc'); const num = $('#crcNum'); const badge=$('#crcBadge');
-  const band = n>70?'red':(n>=40?'amber':'green');
-  const color = band==='red'? getComputedStyle(document.documentElement).getPropertyValue('--red').trim()
-              : band==='amber'? getComputedStyle(document.documentElement).getPropertyValue('--amber').trim()
-              : getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
-  arc.style.strokeDashoffset = offset; arc.style.stroke = color;
-  num.textContent = Number.isFinite(n)? Math.round(n) : '–';
-  badge.className = 'badge ' + band;
-  badge.textContent = Number.isFinite(n)? `CRC: ${Math.round(n)} — ${band.toUpperCase()}` : 'CRC: —';
+  const pct=Number.isFinite(n)? Math.max(0,Math.min(100,n)) : 0;
+  const offset=ringLen*(1-pct/100);
+  const arc=$('#arc'), num=$('#crcNum'), badge=$('#crcBadge');
+  const band=n>70?'red':(n>=40?'amber':'green');
+  const color = getComputedStyle(document.documentElement).getPropertyValue(band==='red'?'--red':band==='amber'?'--amber':'--green').trim();
+  arc.style.strokeDashoffset=offset; arc.style.stroke=color;
+  num.textContent=Number.isFinite(n)? Math.round(n) : '–';
+  badge.className='badge '+band; badge.textContent=Number.isFinite(n)? `CRC: ${Math.round(n)} — ${band.toUpperCase()}`:'CRC: —';
 }
 function fmtValue(row){
   const id=row.id, val=row.latest?.value;
   if(!Number.isFinite(val)) return '—';
-  if (['T10Y2Y','T10Y3M','DGS10','BAMLH0A0HYM2','BUFFETT','UNRATE'].includes(id)) return (+val).toFixed(2)+'%';
-  if (id==='ICSA') return Intl.NumberFormat('en-US').format(Math.round(val));
-  if (id==='VIXCLS') return (+val).toFixed(2);
+  if(['T10Y2Y','T10Y3M','DGS10','BAMLH0A0HYM2','BUFFETT','UNRATE'].includes(id)) return (+val).toFixed(2)+'%';
+  if(id==='ICSA') return Intl.NumberFormat('en-US').format(Math.round(val));
+  if(id==='VIXCLS') return (+val).toFixed(2);
   return (Math.abs(val)>=1000)? Intl.NumberFormat('en-US').format(Math.round(val)) : (Math.round(val*1000)/1000).toString();
 }
 function makeCard(row){
-  const el = document.createElement('div'); el.className='card ind'; el.dataset.id=row.id;
-  const date = row.latest?.date ?? '—';
-  const value = row.latest? row.display : '—';
-  const score = Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'context only';
-  el.innerHTML = `
+  const el=document.createElement('div'); el.className='card ind'; el.dataset.id=row.id;
+  const date=row.latest?.date ?? '—'; const value=row.latest? row.display : '—';
+  const score=Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'context only';
+  el.innerHTML=`
     <div class="top"><div><strong>${row.name}</strong> <span class="id">${row.id}</span></div><div class="muted" style="font-size:12px">${date}</div></div>
     <div class="val">${value}</div>
-    <div class="muted">${score}</div>
-  `;
+    <div class="muted">${score}</div>`;
   el.addEventListener('click',()=>openDrill(row));
   return el;
 }
 
-/* ============== NARRATIVE (short, dynamic sentences) ============== */
+/* ====== Narrative (short, dynamic sentences) ====== */
 function bandName(crc){ return crc>70?'Red':(crc>=40?'Amber':'Green'); }
 function asPct(v,d=2){ return Number.isFinite(v)? v.toFixed(d)+'%' : '—'; }
 function asNum(v){ return Number.isFinite(v)? (Math.abs(v)>=1000? Intl.NumberFormat('en-US').format(Math.round(v)) : (Math.round(v*1000)/1000).toString()) : '—'; }
+function buildNarrative(rows,crc,modeLabel){
+  const byId=Object.fromEntries(rows.map(r=>[r.id,r])); const s=id=>byId[id]?.score; const v=id=>byId[id]?.latest?.value;
+  const band=bandName(crc); const out=[];
+  out.push(`CRC ${Math.round(crc)} (${band}, ${modeLabel}). Weighted 10-year percentiles across indicators.`);
+  const scored=rows.filter(r=>r.score!=null);
+  const top=[...scored].sort((a,b)=>b.score-a.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
+  const low=[...scored].sort((a,b)=>a.score-b.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
+  if(top.length) out.push(`Top pressures: ${top.join(', ')}.`); if(low.length) out.push(`Benign: ${low.join(', ')}.`);
+  const curve=[]; if(Number.isFinite(v('T10Y2Y'))) curve.push(`2s10s ${asPct(v('T10Y2Y'))} (s${Math.round(s('T10Y2Y')||0)})`);
+  if(Number.isFinite(v('T10Y3M'))) curve.push(`10y-3m ${asPct(v('T10Y3M'))} (s${Math.round(s('T10Y3M')||0)})`);
+  if(Number.isFinite(v('DGS10')))  curve.push(`10y ${asPct(v('DGS10'))} (s${Math.round(s('DGS10')||0)})`);
+  if(curve.length) out.push(`Curve/rates: ${curve.join('; ')}.`);
+  const cred=[]; if(Number.isFinite(v('BAMLH0A0HYM2'))) cred.push(`HY OAS ${asPct(v('BAMLH0A0HYM2'))} (s${Math.round(s('BAMLH0A0HYM2')||0)})`);
+  if(Number.isFinite(v('STLFSI4'))) cred.push(`FSI ${asNum(v('STLFSI4'))} (s${Math.round(s('STLFSI4')||0)})`);
+  if(Number.isFinite(v('NFCI'))) cred.push(`NFCI ${asNum(v('NFCI'))} (s${Math.round(s('NFCI')||0)})`);
+  if(cred.length) out.push(`Credit/stress: ${cred.join('; ')}.`);
+  const lab=[]; if(Number.isFinite(v('UNRATE'))) lab.push(`unemp ${asPct(v('UNRATE'),1)} (s${Math.round(s('UNRATE')||0)})`);
+  if(Number.isFinite(v('ICSA'))) lab.push(`claims ${asNum(v('ICSA'))} (s${Math.round(s('ICSA')||0)})`);
+  if(lab.length) out.push(`Labor: ${lab.join('; ')}.`);
 
-function buildNarrative(rows, crc, modeLabel){
-  const byId = Object.fromEntries(rows.map(r=>[r.id,r]));
-  const s = id => byId[id]?.score; const v = id => byId[id]?.latest?.value;
-  const band = bandName(crc);
-  const parts = [];
-
-  // headline
-  parts.push(`CRC is ${Math.round(crc)} (${band}, ${modeLabel}). The score blends each indicator’s 10-year percentile using the selected weights.`);
-
-  // highlights
-  const scored = rows.filter(r=>r.score!=null);
-  const top = [...scored].sort((a,b)=>b.score-a.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
-  const low = [...scored].sort((a,b)=>a.score-b.score).slice(0,3).map(r=>`${r.name} (${Math.round(r.score)})`);
-  if(top.length) parts.push(`Pressure is highest in: ${top.join(', ')}.`);
-  if(low.length) parts.push(`Benign pockets: ${low.join(', ')}.`);
-
-  // curve/rates
-  const curve = [];
-  if(Number.isFinite(v('T10Y2Y'))) curve.push(`2s-10s ${asPct(v('T10Y2Y'))} (score ${Math.round(s('T10Y2Y')||0)})`);
-  if(Number.isFinite(v('T10Y3M'))) curve.push(`10y-3m ${asPct(v('T10Y3M'))} (score ${Math.round(s('T10Y3M')||0)})`);
-  if(Number.isFinite(v('DGS10')))  curve.push(`10y ${asPct(v('DGS10'))} (score ${Math.round(s('DGS10')||0)})`);
-  if(curve.length) parts.push(`Curve/rates: ${curve.join('; ')}.`);
-
-  // credit/stress
-  const cred = [];
-  if(Number.isFinite(v('BAMLH0A0HYM2'))) cred.push(`HY OAS ${asPct(v('BAMLH0A0HYM2'))} (score ${Math.round(s('BAMLH0A0HYM2')||0)})`);
-  if(Number.isFinite(v('STLFSI4'))) cred.push(`FSI ${asNum(v('STLFSI4'))} (score ${Math.round(s('STLFSI4')||0)})`);
-  if(Number.isFinite(v('NFCI'))) cred.push(`NFCI ${asNum(v('NFCI'))} (score ${Math.round(s('NFCI')||0)})`);
-  if(cred.length) parts.push(`Credit/stress: ${cred.join('; ')}.`);
-
-  // labor
-  const lab = [];
-  if(Number.isFinite(v('UNRATE'))) lab.push(`unemp ${asPct(v('UNRATE'),1)} (score ${Math.round(s('UNRATE')||0)})`);
-  if(Number.isFinite(v('ICSA'))) lab.push(`claims ${asNum(v('ICSA'))} (score ${Math.round(s('ICSA')||0)})`);
-  if(lab.length) parts.push(`Labor: ${lab.join('; ')}.`);
-
-  // inflation
-  const infl = [];
-  if(Number.isFinite(v('CPIAUCSL'))) infl.push(`CPI (score ${Math.round(s('CPIAUCSL')||0)})`);
-  if(Number.isFinite(v('CPILFESL'))) infl.push(`Core (score ${Math.round(s('CPILFESL')||0)})`);
-  if(Number.isFinite(v('PCEPI'))) infl.push(`PCE (score ${Math.round(s('PCEPI')||0)})`);
-  if(infl.length) parts.push(`Inflation: ${infl.join(', ')}.`);
-
-  // markets & USD
-  const mv = [];
-  if(Number.isFinite(v('SP500'))) mv.push(`S&P ${asNum(v('SP500'))} (context)`);
-  if(Number.isFinite(v('VIXCLS'))) mv.push(`VIX ${asNum(v('VIXCLS'))} (score ${Math.round(s('VIXCLS')||0)})`);
-  if(Number.isFinite(v('BUFFETT'))) mv.push(`Buffett ${asPct(v('BUFFETT'))} (score ${Math.round(s('BUFFETT')||0)})`);
-  if(mv.length) parts.push(`Markets/valuation: ${mv.join('; ')}.`);
-  if(Number.isFinite(v('DTWEXBGS'))) parts.push(`USD broad index score ${Math.round(s('DTWEXBGS')||0)}.`);
-
-  // synthesis
-  const sc = scored.map(r=>r.score);
-  const breadth = !sc.length ? 'insufficient' : (sc.filter(x=>x>70).length >= sc.length*0.5 ? 'broadly elevated'
-                    : (sc.filter(x=>x<40).length >= sc.length*0.5 ? 'broadly benign' : 'mixed'));
-  parts.push(`Read: ${band} with ${breadth} breadth. Watch curve shape, HY spreads, and claims for direction.`);
-
-  return parts.join('\n');
+  const infl=[]; if(Number.isFinite(v('CPIAUCSL'))) infl.push(`CPI (s${Math.round(s('CPIAUCSL')||0)})`);
+  if(Number.isFinite(v('CPILFESL'))) infl.push(`Core (s${Math.round(s('CPILFESL')||0)})`);
+  if(Number.isFinite(v('PCEPI'))) infl.push(`PCE (s${Math.round(s('PCEPI')||0)})`);
+  if(infl.length) out.push(`Inflation: ${infl.join(', ')}.`);
+  const mv=[]; if(Number.isFinite(v('SP500'))) mv.push(`S&P ${asNum(v('SP500'))}`);
+  if(Number.isFinite(v('VIXCLS'))) mv.push(`VIX ${asNum(v('VIXCLS'))} (s${Math.round(s('VIXCLS')||0)})`);
+  if(Number.isFinite(v('BUFFETT'))) mv.push(`Buffett ${asPct(v('BUFFETT'))} (s${Math.round(s('BUFFETT')||0)})`);
+  if(mv.length) out.push(`Markets: ${mv.join('; ')}.`);
+  if(Number.isFinite(v('DTWEXBGS'))) out.push(`USD score ${Math.round(s('DTWEXBGS')||0)}.`);
+  const sc=scored.map(r=>r.score);
+  const breadth=!sc.length?'insufficient':(sc.filter(x=>x>70).length>=sc.length*0.5?'broadly elevated':(sc.filter(x=>x<40).length>=sc.length*0.5?'broadly benign':'mixed'));
+  out.push(`Read: ${band} with ${breadth} breadth. Watch curve shape, HY spreads, and claims for direction.`);
+  return out.join('\n');
 }
 
-/* ============== WEIGHTS & RUN ============== */
-function normalizeWeights(mode, rows){
-  let base;
-  if(mode==='simple'){ base={}; rows.forEach(r=>{ if(r.score!=null) base[r.id]=1; }); }
+/* ====== weights ====== */
+function normalizeWeights(mode,rows){
+  let base; if(mode==='simple'){ base={}; rows.forEach(r=>{ if(r.score!=null) base[r.id]=1; }); }
   else if(mode==='basic'||mode==='advanced'){ base={...WEIGHTS[mode]}; }
-  else { try{ base=JSON.parse($('#custom').value||'{}'); } catch{ base={}; } }
-  const usable = rows.filter(r=>r.score!=null).map(r=>r.id);
+  else { try{ base=JSON.parse($('#custom').value||'{}'); }catch{ base={}; } }
+  const usable=rows.filter(r=>r.score!=null).map(r=>r.id);
   const w={}; usable.forEach(id=> w[id]=Math.max(0,+base[id] || (mode==='simple'?1:0)));
-  let sum = Object.values(w).reduce((a,b)=>a+b,0);
-  if(sum<=0){ usable.forEach(id=> w[id]=1); sum=usable.length; }
-  Object.keys(w).forEach(id=> w[id]/=sum);
-  return w;
+  let sum=Object.values(w).reduce((a,b)=>a+b,0); if(sum<=0){ usable.forEach(id=>w[id]=1); sum=usable.length; }
+  Object.keys(w).forEach(id=> w[id]/=sum); return w;
 }
 
+/* ====== alerts ====== */
+function getAlertCfg(){
+  const cfg=JSON.parse(localStorage.getItem('CRC_ALERTS')||'{}');
+  return {
+    crc:+($('#a_crc').value||cfg.crc||70),
+    twoTen:+($('#a_2s10s').value||cfg.twoTen||0),
+    oas:+($('#a_oas').value||cfg.oas||5),
+    vix:+($('#a_vix').value||cfg.vix||25),
+    claims:+($('#a_claims').value||cfg.claims||300),
+    buffett:+($('#a_buffett').value||cfg.buffett||150),
+  };
+}
+function saveAlertCfg(){
+  const cfg=getAlertCfg(); localStorage.setItem('CRC_ALERTS',JSON.stringify(cfg));
+  showMessage('Alerts saved');
+}
+$('#saveAlerts').addEventListener('click',saveAlertCfg);
+
+function applyAlerts(crc, rows){
+  const a = getAlertCfg(), chip = (txt,band) => `<span class="chip ${band}">${txt}</span>`;
+  const byId = Object.fromEntries(rows.map(r=>[r.id,r]));
+  const v = id => byId[id]?.latest?.value;
+  const out = [];
+  if (crc>=a.crc) out.push(chip(`CRC ≥ ${a.crc}`, 'red'));
+  if (Number.isFinite(v('T10Y2Y')) && v('T10Y2Y')<=a.twoTen) out.push(chip(`2s10s ≤ ${a.twoTen}%`, 'amber'));
+  if (Number.isFinite(v('BAMLH0A0HYM2')) && v('BAMLH0A0HYM2')>=a.oas) out.push(chip(`HY OAS ≥ ${a.oas}%`, 'red'));
+  if (Number.isFinite(v('VIXCLS')) && v('VIXCLS')>=a.vix) out.push(chip(`VIX ≥ ${a.vix}`, 'amber'));
+  if (Number.isFinite(v('ICSA')) && v('ICSA')>=a.claims*1000) out.push(chip(`Claims ≥ ${a.claims}k`, 'amber'));
+  if (Number.isFinite(v('BUFFETT')) && v('BUFFETT')>=a.buffett) out.push(chip(`Buffett ≥ ${a.buffett}%`, 'amber'));
+  $('#alerts').innerHTML = out.join(' ');
+}
+
+/* ====== calendar (simple) ====== */
+function buildCalendar(rows){
+  const byId=Object.fromEntries(rows.map(r=>[r.id,r]));
+  const last = id => byId[id]?.latest?.date;
+  const nexts=[];
+  // naive cadence estimates
+  [['ICSA','Weekly ~ Thu'],['CPIAUCSL','Monthly'],['UNRATE','Monthly'],['INDPRO','Monthly'],
+   ['RSAFS','Monthly'],['HOUST','Monthly'],['PERMIT','Monthly'],['PCEPI','Monthly'],
+   ['STLFSI4','Weekly'],['NFCI','Weekly'],['SP500','Daily'],['DGS10','Daily'],['VIXCLS','Daily']]
+   .forEach(([id, cadence])=>{
+     if(last(id)) nexts.push(`${id}: next ${cadence} after ${last(id)}`);
+   });
+  const imported = JSON.parse(localStorage.getItem('CRC_CAL')||'[]');
+  const txt = (imported.length? 'Imported:\n'+imported.join('\n')+'\n\n':'') + (nexts.length? 'Auto:\n'+nexts.join('\n'):'');
+  $('#calendarList').textContent = txt || '—';
+}
+$('#importCal').addEventListener('click', async ()=>{
+  const url = $('#calUrl').value.trim(); if(!url) return;
+  try{
+    const prox = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const txt = await fetch(prox).then(r=>r.text());
+    // naive split by lines
+    const lines = txt.split(/\r?\n/).filter(Boolean).slice(0,50);
+    localStorage.setItem('CRC_CAL', JSON.stringify(lines));
+    buildCalendar(state.rows);
+  }catch(e){ console.error(e); alert('Import failed'); }
+});
+$('#clearCal').addEventListener('click', ()=>{ localStorage.removeItem('CRC_CAL'); buildCalendar(state.rows); });
+
+/* ====== history & views ====== */
+function updateHistory(){
+  const histWrap=$('#historyBox'); const count=$('#histCount');
+  const hist=JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
+  count.textContent=hist.length?`(${hist.length} saved)`:'(no history yet)';
+  histWrap.innerHTML=hist.map(h=>`
+    <div class="card" style="cursor:default;margin-top:8px">
+      <div class="miniMeta">${h.ts} • CRC ${h.crc} • ${h.mode}</div>
+      <div style="white-space:pre-wrap;margin-top:8px">${h.text}</div>
+    </div>`).join('');
+}
+$('#toggleHist').addEventListener('click',()=>{
+  $('#historyBox').classList.toggle('hidden');
+  $('#toggleHist').textContent=$('#historyBox').classList.contains('hidden')?'📜 Show History':'📕 Hide History';
+});
+function refreshViewsList(){
+  const all = JSON.parse(localStorage.getItem('CRC_VIEWS')||'{}');
+  $('#viewsList').textContent = Object.keys(all).length ? 'Saved: ' + Object.keys(all).join(', ') : 'No saved views yet';
+}
+function viewState(){
+  return {
+    mode: $('#weightMode').value,
+    alerts: getAlertCfg(),
+    overlays: state.overlays
+  };
+}
+function applyView(v){
+  if(!v) return;
+  $('#weightMode').value = v.mode || 'advanced';
+  localStorage.setItem('CRC_ALERTS', JSON.stringify(v.alerts||{}));
+  state.overlays = Array.isArray(v.overlays) ? v.overlays.slice(0,5) : [];
+  // reflect alerts UI
+  const a=v.alerts||{}; $('#a_crc').value=a.crc??70; $('#a_2s10s').value=a.twoTen??0;
+  $('#a_oas').value=a.oas??5; $('#a_vix').value=a.vix??25; $('#a_claims').value=a.claims??300; $('#a_buffett').value=a.buffett??150;
+}
+$('#saveView').addEventListener('click',()=>{
+  const name=$('#viewName').value.trim(); if(!name) return alert('Name required');
+  const all=JSON.parse(localStorage.getItem('CRC_VIEWS')||'{}'); all[name]=viewState();
+  localStorage.setItem('CRC_VIEWS',JSON.stringify(all)); refreshViewsList(); alert('Saved');
+});
+$('#loadView').addEventListener('click',()=>{
+  const name=$('#viewName').value.trim(); const all=JSON.parse(localStorage.getItem('CRC_VIEWS')||'{}');
+  if(!all[name]) return alert('Not found'); applyView(all[name]); alert('Loaded view'); drawChart();
+});
+$('#deleteView').addEventListener('click',()=>{
+  const name=$('#viewName').value.trim(); const all=JSON.parse(localStorage.getItem('CRC_VIEWS')||'{}');
+  if(!all[name]) return alert('Not found'); delete all[name]; localStorage.setItem('CRC_VIEWS',JSON.stringify(all)); refreshViewsList(); alert('Deleted');
+});
+$('#shareView').addEventListener('click',()=>{
+  const params = new URLSearchParams();
+  const v = viewState();
+  params.set('mode', v.mode);
+  params.set('overlays', v.overlays.join(','));
+  const a=v.alerts||{}; params.set('alerts', btoa(JSON.stringify(a)));
+  const url = location.origin + location.pathname + '?' + params.toString();
+  navigator.clipboard.writeText(url).then(()=>alert('Share link copied'));
+});
+
+/* ====== chart (Chart.js with axes + zoom) ====== */
+function colorCycle(i){ return ['#6aa3ff','#ff6ad5','#ffd369','#2dd4bf','#ff9f43'][i%5]; }
+function datasetFor(id){
+  const arr = state.cache[id]||[];
+  return {
+    label: id,
+    data: arr.map(d=>({x: new Date(d.date), y: d.value})),
+    borderColor: colorCycle(state.chart?.data?.datasets?.length||0),
+    borderWidth: 2,
+    pointRadius: 0,
+    spanGaps: true
+  };
+}
+function initChart(){
+  const ctx = document.getElementById('chart').getContext('2d');
+  if(state.chart){ state.chart.destroy(); }
+  state.chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: false },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'month' },
+          title: { display: true, text: 'Date', color: '#cfe0ff' },
+          ticks: { color: '#95a3be' },
+          grid: { color: '#1e2a40' }
+        },
+        y: {
+          title: { display: true, text: 'Value', color: '#cfe0ff' },
+          ticks: { color: '#95a3be' },
+          grid: { color: '#1e2a40' }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: '#cfe0ff' } },
+        zoom: {
+          pan: { enabled: true, mode: 'xy' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+        }
+      }
+    }
+  });
+}
+function redrawLegend(){
+  const legend = $('#legend'); legend.innerHTML='';
+  state.chart.data.datasets.forEach(ds=>{
+    const color = ds.borderColor;
+    const last = ds.data[ds.data.length-1] || {};
+    const val = (last?.y!=null) ? (Math.abs(last.y)>=1000?Math.round(last.y).toLocaleString(): (last.y.toFixed? last.y.toFixed(2): last.y)) : '—';
+    const el = document.createElement('div'); el.className='key';
+    el.innerHTML = `<span class="sw" style="background:${color}"></span>${ds.label}<span class="miniMeta"> ${val} ${last?.x? '('+last.x.toISOString().slice(0,10)+')':''}</span>`;
+    legend.appendChild(el);
+  });
+}
+$('#addSeries').addEventListener('click', ()=>{
+  const id = $('#chartSeries').value;
+  if(state.chart.data.datasets.some(d=>d.label===id)) return;
+  if(state.chart.data.datasets.length>=5) return alert('Max 5 overlays');
+  state.chart.data.datasets.push(datasetFor(id));
+  state.chart.update(); redrawLegend();
+});
+$('#resetSeries').addEventListener('click', ()=>{
+  state.chart.data.datasets = [];
+  state.chart.update(); redrawLegend();
+});
+$('#refreshChart').addEventListener('click', ()=>{
+  initChart();
+  // default overlays: SP500, DGS10, T10Y2Y, BAMLH0A0HYM2, UNRATE (if loaded)
+  ['SP500','DGS10','T10Y2Y','BAMLH0A0HYM2','UNRATE'].forEach(id=>{
+    if(state.cache[id]?.length) state.chart.data.datasets.push(datasetFor(id));
+  });
+  state.chart.update(); redrawLegend();
+});
+
+/* ====== drilldown modal ====== */
+const modal=$('#modal'), mTitle=$('#mTitle'), mMeta=$('#mMeta'), mSpark=$('#mSpark'), mExplainer=$('#mExplainer');
+$('#closeModal').addEventListener('click',()=>modal.classList.remove('show'));
+function openDrill(row){
+  mTitle.textContent=`${row.name} — ${row.id}`;
+  const scoreTxt=Number.isFinite(row.score)? `score ${Math.round(row.score)}`:'context only';
+  mMeta.textContent=`${row.latest?.date||'—'} • ${row.display||'—'} • ${scoreTxt}`;
+  mExplainer.textContent=explain[row.id]||'—';
+  drawSpark(row.id); modal.classList.add('show');
+}
+function drawSpark(id){
+  const ctx=mSpark.getContext('2d'); ctx.clearRect(0,0,mSpark.width,mSpark.height);
+  const data=(state.cache[id]||[]).slice(-250);
+  if(!data.length){ ctx.fillStyle='#9fb3d9'; ctx.font='12px Inter'; ctx.fillText('No data yet.',8,18); return; }
+  const padL=24,padR=8,padT=8,padB=20,W=mSpark.width,H=mSpark.height;
+  const xs=data.map(d=>+new Date(d.date)), ys=data.map(d=>d.value);
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  const x=t=> padL+(t-minX)/(maxX-minX)*(W-padL-padR);
+  const y=v=> padT+(1-(v-minY)/(maxY-minY))*(H-padT-padB);
+  ctx.strokeStyle='#1a2536'; for(let i=1;i<3;i++){ const yy=padT+i*(H-padT-padB)/3; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
+  ctx.strokeStyle='#6aa3ff'; ctx.lineWidth=2; ctx.beginPath();
+  data.forEach((d,i)=>{ const xi=x(+new Date(d.date)), yi=y(d.value); i?ctx.lineTo(xi,yi):ctx.moveTo(xi,yi); });
+  ctx.stroke();
+}
+
+/* ====== RUN ====== */
+function setCards(rows){
+  const cards=$('#cards'); cards.innerHTML=''; rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
+  rows.forEach(r=>cards.appendChild(makeCard(r)));
+}
+function updateHistoryAppend(crc,modeName,narr){
+  const hist=JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
+  const ts=new Date().toLocaleString();
+  hist.unshift({ts,crc,mode:modeName,text:narr});
+  localStorage.setItem('CRC_HISTORY',JSON.stringify(hist.slice(0,10)));
+  updateHistory();
+}
 async function run(){
-  const key = $('#apiKey').value.trim();
-  if(!key){ alert('Enter your FRED API key'); return; }
-  localStorage.setItem('FRED_KEY', key);
+  const key=$('#apiKey').value.trim(); if(!key){ alert('Enter your FRED API key'); return; }
+  localStorage.setItem('FRED_KEY',key);
   $('#runBtn').disabled=true; $('#runBtn').textContent='Loading…';
-  $('#execBody').textContent='Fetching…';
-  setGauge(0);
+  $('#execBody').textContent='Fetching…'; setGauge(0);
 
   try{
-    const base = await Promise.all(SERIES.map(async meta=>{
+    const base=await Promise.all(SERIES.map(async meta=>{
       if(meta.id==='BUFFETT'){
-        const series = await buffettRatio(key);
-        const latest = lastNumeric(series);
-        const win = tenYearWindow(series);
-        const p = pctRank(latest?.value, win);
-        const row = {id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,
-          latest, score:Number.isFinite(p)? (meta.invert?100-p:p):null};
-        row.display = latest? (latest.value.toFixed(2)+'%'):'—';
-        return row;
-      } else if (meta.id==='SP500'){
-        const series = await fredSeries('SP500',key,12);
-        const latest = lastNumeric(series);
-        return {id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,
-          latest, score:null, display: latest? (Math.round(latest.value).toLocaleString()):'—'};
+        const series=await buffettRatio(key); const latest=lastNumeric(series);
+        const win=tenYearWindow(series); const p=pctRank(latest?.value,win);
+        const row={id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,
+          latest,score:Number.isFinite(p)?(meta.invert?100-p:p):null};
+        row.display=latest? (latest.value.toFixed(2)+'%'):'—'; return row;
+      } else if(meta.id==='SP500'){
+        const series=await fredSeries('SP500',key,12); const latest=lastNumeric(series);
+        return {id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,latest,score:null,
+          display: latest? (Math.round(latest.value).toLocaleString()):'—'};
       } else {
-        const series = await fredSeries(meta.id,key,11);
-        const latest = lastNumeric(series);
-        const win = tenYearWindow(series);
-        const p = pctRank(latest?.value, win);
-        const row = {id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,
-          latest, score:Number.isFinite(p)? (meta.invert?100-p:p):null};
-        row.display = latest? fmtValue(row):'—';
-        return row;
+        const series=await fredSeries(meta.id,key,11); const latest=lastNumeric(series);
+        const win=tenYearWindow(series); const p=pctRank(latest?.value,win);
+        const row={id:meta.id,name:meta.name,invert:meta.invert,type:meta.type,cat:meta.cat,
+          latest,score:Number.isFinite(p)?(meta.invert?100-p:p):null};
+        row.display=latest? fmtValue(row):'—'; return row;
       }
     }));
+    state.rows=base; state.fetchedAt=new Date();
 
-    state.rows = base; state.fetchedAt = new Date();
-
-    const mode = $('#weightMode').value;
-    const weights = normalizeWeights(mode, base);
-    const scored = base.filter(r=>r.score!=null);
-    const crc = Math.round(scored.reduce((a,r)=>a + (r.score*(weights[r.id]??0)), 0));
+    const mode=$('#weightMode').value; const weights=normalizeWeights(mode,base);
+    const scored=base.filter(r=>r.score!=null);
+    const crc=Math.round(scored.reduce((a,r)=>a+(r.score*(weights[r.id]??0)),0));
     setGauge(crc);
+    const modeName=({simple:'Simple (equal)',basic:'Basic (balanced)',advanced:'Advanced (predictive tilt)',custom:'Custom'})[mode];
+    const narrative=buildNarrative(base,crc,modeName);
+    $('#execBody').textContent=narrative;
+    $('#lastUpdated').textContent=`Last run: ${state.fetchedAt.toLocaleString()} • Data cadence varies (daily/weekly/monthly).`;
 
-    const modeName = ({simple:'Simple (equal)',basic:'Basic (balanced)',advanced:'Advanced (predictive tilt)',custom:'Custom'})[mode];
-    const narrative = buildNarrative(base, crc, modeName);
-    $('#execBody').textContent = narrative;
-    $('#lastUpdated').textContent = `Last run: ${state.fetchedAt.toLocaleString()} • Data cadence varies (daily/weekly/monthly).`;
+    updateHistoryAppend(crc,modeName,narrative);
+    setCards(base);
+    applyAlerts(crc, base);
+    buildCalendar(base);
 
-    // history
-    const hist = JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
-    hist.unshift({ ts: state.fetchedAt.toLocaleString(), crc, mode: modeName, text: narrative });
-    localStorage.setItem('CRC_HISTORY', JSON.stringify(hist.slice(0,10)));
-    updateHistory();
-
-    // cards
-    const cards = $('#cards'); cards.innerHTML='';
-    base.sort((a,b)=> (b.score??-1)-(a.score??-1));
-    base.forEach(r=> cards.appendChild(makeCard(r)));
-
-    // chart
-    base.forEach(r=> { if(state.cache[r.id]) return; }); // cache already filled in fredSeries
-    baseDomain=null; drawChart();
+    // Chart init + default overlays
+    initChart();
+    ['SP500','DGS10','T10Y2Y','BAMLH0A0HYM2','UNRATE'].forEach(id=>{
+      if(state.cache[id]?.length) state.chart.data.datasets.push(datasetFor(id));
+    });
+    state.chart.update(); redrawLegend();
 
   }catch(e){
-    console.error(e);
-    $('#execBody').textContent='Load error (proxy limits or network). Try again.';
+    console.error(e); $('#execBody').textContent='Load error (proxy limits or network). Try again.';
   }finally{
     $('#runBtn').disabled=false; $('#runBtn').textContent='Run / Refresh';
   }
 }
 
-/* ============== HISTORY (hybrid) ============== */
-function updateHistory(){
-  const histWrap = $('#historyBox'); const count = $('#histCount');
-  const hist = JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
-  count.textContent = hist.length ? `(${hist.length} saved)` : '(no history yet)';
-  histWrap.innerHTML = hist.map(h=>`
-    <div class="card" style="margin-top:8px">
-      <div class="miniMeta">${h.ts} • CRC ${h.crc} • ${h.mode}</div>
-      <div style="white-space:pre-wrap;margin-top:8px">${h.text}</div>
-    </div>`).join('');
-}
-$('#toggleHist').addEventListener('click', ()=>{
-  $('#historyBox').classList.toggle('hidden');
-  $('#toggleHist').textContent = $('#historyBox').classList.contains('hidden') ? '📜 Show History' : '📕 Hide History';
-});
-
-/* ============== CHART: pinch-zoom & pan (x & y) ============== */
-const chart = $('#chart');
-let view = { xMin:0,xMax:1,yMin:0,yMax:1 }, baseDomain=null, lastGesture=null;
-function getDataForChart(){
-  const id = $('#chartSeries').value;
-  const arr = state.cache[id]||[];
-  if(!arr.length) return null;
-  if(!baseDomain){
-    const xs = arr.map(d=>new Date(d.date).getTime());
-    const ys = arr.map(d=>d.value);
-    baseDomain = { xMin:Math.min(...xs), xMax:Math.max(...xs), yMin:Math.min(...ys), yMax:Math.max(...ys) };
-    const twoY = 365*24*3600*1000*2;
-    view.xMax = baseDomain.xMax;
-    view.xMin = Math.max(baseDomain.xMin, baseDomain.xMax - twoY);
-    view.yMin = baseDomain.yMin; view.yMax = baseDomain.yMax;
-  }
-  return arr;
-}
-function clampView(){
-  if(!baseDomain) return;
-  const minW=(baseDomain.xMax-baseDomain.xMin)/200, minH=(baseDomain.yMax-baseDomain.yMin)/200;
-  if((view.xMax-view.xMin)<minW) view.xMax=view.xMin+minW;
-  if((view.yMax-view.yMin)<minH) view.yMax=view.yMin+minH;
-  if(view.xMin<baseDomain.xMin){ const d=baseDomain.xMin-view.xMin; view.xMin+=d; view.xMax+=d; }
-  if(view.xMax>baseDomain.xMax){ const d=view.xMax-baseDomain.xMax; view.xMin-=d; view.xMax-=d; }
-  if(view.yMin<baseDomain.yMin){ const d=baseDomain.yMin-view.yMin; view.yMin+=d; view.yMax+=d; }
-  if(view.yMax>baseDomain.yMax){ const d=view.yMax-baseDomain.yMax; view.yMin-=d; view.yMax-=d; }
-}
-function drawChart(){
-  const ctx = chart.getContext('2d');
-  const W = chart.width, H = chart.height;
-  ctx.clearRect(0,0,W,H);
-  const id = $('#chartSeries').value;
-  const data = getDataForChart();
-  if(!data){ ctx.fillStyle='#9fb3d9'; ctx.font='14px Inter'; ctx.fillText('Run the dashboard first.', 16, 24); return; }
-  const padL=48,padR=16,padT=16,padB=30;
-  const x = t => padL + ( (t - view.xMin) / (view.xMax - view.xMin) ) * (W-padL-padR);
-  const y = v => padT + (1 - ( (v - view.yMin) / (view.yMax - view.yMin) )) * (H-padT-padB);
-
-  // axes & grid
-  const ctxAxis = '#213147', ctxGrid='#1a2536';
-  ctx.strokeStyle=ctxAxis; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.lineTo(W-padR,H-padB); ctx.stroke();
-  ctx.strokeStyle=ctxGrid;
-  for(let i=1;i<5;i++){ const yy=padT+i*(H-padT-padB)/5; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
-
-  // series
-  ctx.strokeStyle='#6aa3ff'; ctx.lineWidth=2; ctx.beginPath();
-  data.forEach((d,i)=>{ const xi=x(new Date(d.date).getTime()), yi=y(d.value); i?ctx.lineTo(xi,yi):ctx.moveTo(xi,yi); });
-  ctx.stroke();
-
-  // last point
-  const last = data[data.length-1];
-  const lx=x(new Date(last.date).getTime()), ly=y(last.value);
-  ctx.fillStyle='#6aa3ff'; ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#bcd2ff'; ctx.font='12px Inter';
-  const valStr = (Math.abs(last.value)>=1000? Math.round(last.value).toLocaleString(): last.value.toFixed(2));
-  ctx.fillText(`${id}: ${valStr} (${last.date})`, padL+8, 28);
-}
-function getTouches(ev){ const arr=[]; for(const t of ev.touches) arr.push({id:t.identifier,x:t.clientX,y:t.clientY}); return arr; }
-function distance(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
-function midpoint(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
-chart.addEventListener('touchstart',(ev)=>{
-  ev.preventDefault();
-  const ts = getTouches(ev);
-  if(ts.length===1){ lastGesture={type:'pan',start:ts[0],snap:{...view}}; }
-  else if(ts.length>=2){ const a=ts[0],b=ts[1],mid=midpoint(a,b),dist=distance(a,b); lastGesture={type:'pinch',cx:mid.x,cy:mid.y,dist, snap:{...view}}; }
-},{passive:false});
-chart.addEventListener('touchmove',(ev)=>{
-  ev.preventDefault(); if(!baseDomain||!lastGesture) return;
-  const ts=getTouches(ev); const W=chart.clientWidth,H=chart.clientHeight;
-  if(lastGesture.type==='pan'&&ts.length===1){
-    const dx=ts[0].x-lastGesture.start.x, dy=ts[0].y-lastGesture.start.y;
-    const xr = lastGesture.snap.xMax-lastGesture.snap.xMin;
-    const yr = lastGesture.snap.yMax-lastGesture.snap.yMin;
-    const xShift = -dx/(W-64)*xr, yShift =  dy/(H-48)*yr;
-    view.xMin=lastGesture.snap.xMin+xShift; view.xMax=lastGesture.snap.xMax+xShift;
-    view.yMin=lastGesture.snap.yMin+yShift; view.yMax=lastGesture.snap.yMax+yShift;
-    clampView(); drawChart();
-  }
-  if(lastGesture.type==='pinch'&&ts.length>=2){
-    const a=ts[0],b=ts[1]; const d=distance(a,b); const scale=d/(lastGesture.dist||d);
-    const rect=chart.getBoundingClientRect();
-    const cx=( (lastGesture.cx-rect.left-48)/(chart.clientWidth-64) );
-    const cy=( (lastGesture.cy-rect.top -16)/(chart.clientHeight-48) );
-    const xr=lastGesture.snap.xMax-lastGesture.snap.xMin, yr=lastGesture.snap.yMax-lastGesture.snap.yMin;
-    const nxr=xr/scale, nyr=yr/scale;
-    const xc=lastGesture.snap.xMin + xr*cx, yc=lastGesture.snap.yMin + yr*(1-cy);
-    view.xMin=xc - nxr*cx; view.xMax=xc + nxr*(1-cx);
-    view.yMin=yc - nyr*(1-cy); view.yMax=yc + nyr*cy;
-    clampView(); drawChart();
-  }
-},{passive:false});
-chart.addEventListener('touchend',(ev)=>{ ev.preventDefault(); lastGesture=null; },{passive:false});
-chart.addEventListener('touchcancel',(ev)=>{ ev.preventDefault(); lastGesture=null; },{passive:false});
-chart.addEventListener('dblclick',()=>{ baseDomain=null; drawChart(); });
-$('#refreshChart').addEventListener('click',()=>{ baseDomain=null; drawChart(); });
-$('#chartSeries').addEventListener('change',()=>{ baseDomain=null; drawChart(); });
-
-/* ============== DRILLDOWN MODAL ============== */
-const modal=$('#modal'), mTitle=$('#mTitle'), mMeta=$('#mMeta'), mSpark=$('#mSpark'), mExplainer=$('#mExplainer');
-$('#closeModal').addEventListener('click',()=>modal.classList.remove('show'));
-function openDrill(row){
-  mTitle.textContent = `${row.name} — ${row.id}`;
-  const scoreTxt = Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'context only';
-  mMeta.textContent = `${row.latest?.date||'—'} • ${row.display||'—'} • ${scoreTxt}`;
-  mExplainer.textContent = explain[row.id] || '—';
-  drawSpark(row.id);
-  modal.classList.add('show');
-}
-function drawSpark(id){
-  const ctx = mSpark.getContext('2d');
-  ctx.clearRect(0,0,mSpark.width,mSpark.height);
-  const data = (state.cache[id]||[]).slice(-250);
-  if(!data.length){ ctx.fillStyle='#9fb3d9'; ctx.font='12px Inter'; ctx.fillText('No data yet.', 8, 18); return; }
-  const padL=24,padR=8,padT=8,padB=20, W=mSpark.width,H=mSpark.height;
-  const xs=data.map(d=>new Date(d.date).getTime()), ys=data.map(d=>d.value);
-  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
-  const x=t=> padL + (t-minX)/(maxX-minX)*(W-padL-padR);
-  const y=v=> padT + (1-(v-minY)/(maxY-minY))*(H-padT-padB);
-  ctx.strokeStyle='#1a2536'; for(let i=1;i<3;i++){ const yy=padT+i*(H-padT-padB)/3; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
-  ctx.strokeStyle='#6aa3ff'; ctx.lineWidth=2; ctx.beginPath();
-  data.forEach((d,i)=>{ const xi=x(new Date(d.date).getTime()), yi=y(d.value); i?ctx.lineTo(xi,yi):ctx.moveTo(xi,yi); });
-  ctx.stroke();
-}
-
-/* ============== BOOT ============== */
+/* ====== boot ====== */
 (function init(){
-  const saved = localStorage.getItem('FRED_KEY'); if(saved) $('#apiKey').value = saved;
+  const saved=localStorage.getItem('FRED_KEY'); if(saved) $('#apiKey').value=saved;
   $('#runBtn').addEventListener('click', run);
-  $('#weightMode').addEventListener('change', e=>{
-    $('#customBox').classList.toggle('hidden', e.target.value!=='custom');
-  });
+  $('#weightMode').addEventListener('change', e=>$('#customBox').classList.toggle('hidden', e.target.value!=='custom'));
   $('#toggleHist').addEventListener('click', ()=>{
     $('#historyBox').classList.toggle('hidden');
     $('#toggleHist').textContent = $('#historyBox').classList.contains('hidden') ? '📜 Show History' : '📕 Hide History';
   });
+  refreshViewsList();
 })();
 </script>
 </body>
