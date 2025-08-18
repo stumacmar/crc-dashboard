@@ -1,398 +1,349 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>The Marshall Stock Market Crash Composite Indicator</title>
-<link rel="preconnect" href="https://cdn.plot.ly" />
-<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<link rel="preconnect" href="https://api.stlouisfed.org">
 <style>
-  :root{
-    --bg:#0f1720;--card:#121c26;--muted:#7b8a9a;--text:#e6eef6;--soft:#9fb2c6;
-    --accent:#4da3ff;--green:#2ecc71;--amber:#ffb020;--red:#ff5d5d;--chip:#223244;
-    --stroke:#223041;
-  }
-  *{box-sizing:border-box}
-  html,body{background:var(--bg);color:var(--text);font:400 16px/1.4 ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  h1{font:800 clamp(26px,4.6vw,44px)/1.05 ui-sans-serif;margin:16px 0 4px}
-  h2{font:700 22px/1.2 ui-sans-serif;margin:0 0 8px}
-  h3{font:700 18px/1.2 ui-sans-serif;margin:0 0 6px}
-  .muted{color:var(--muted)}
-  .wrap{max-width:1000px;margin:0 auto;padding:20px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input,select,button{border-radius:12px;border:1px solid var(--stroke);background:#0e1722;color:var(--text)}
-  input,select{padding:12px 14px}
-  button{padding:12px 18px;background:linear-gradient(180deg,#3f8cff,#2a6eea);border:none;font-weight:700}
-  button:disabled{opacity:.6}
-  .badge{display:inline-block;background:var(--chip);border:1px solid var(--stroke);color:var(--soft);padding:6px 10px;border-radius:999px;font-weight:600}
-  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:18px;padding:16px;margin:14px 0}
-  .grid{display:grid;grid-template-columns:1fr;gap:12px}
-  @media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
-  @media(min-width:980px){.grid{grid-template-columns:repeat(3,1fr)}}
-  .card{background:#0e1822;border:1px solid var(--stroke);border-radius:16px;padding:16px}
-  .kicker{display:flex;gap:8px;align-items:center;margin:6px 0 10px}
-  .pill{background:var(--chip);padding:4px 9px;border-radius:999px;border:1px solid var(--stroke);font-size:12px;color:#b8c6d6}
-  .vline{width:3px;border-radius:3px;min-height:18px}
-  .v-green{background:var(--green)} .v-amber{background:var(--amber)} .v-red{background:var(--red)}
-  .kv{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  .value{font:800 34px/1.05 ui-sans-serif}
-  .unit{font-weight:600;color:var(--soft)}
-  .hint{margin-top:8px;color:#a8bacd;font-size:14px}
-  .crc{display:flex;gap:18px;align-items:center}
-  .gauge{width:110px;height:110px;border-radius:50%;background:
-    conic-gradient(var(--amber) 0 0, #223041 0 360deg);position:relative}
-  .gauge>.hole{position:absolute;inset:8px;border-radius:50%;background:#0e1822;border:1px solid #1a2a3a;display:flex;align-items:center;justify-content:center;font:800 34px/1 ui-sans-serif;color:#eaf0f6}
-  .crc-chip{background:#2a2318;border:1px solid #3a2e16;color:#ffd27d}
-  .crc-chip.green{background:#1b2a20;border-color:#1f3b28;color:#9ff1c4}
-  .crc-chip.red{background:#2a1a1a;border-color:#3a1f1f;color:#ffb3b3}
-  .note{color:#a9bacd}
-  .small{font-size:13px;color:#9eb0c5}
-  .footer{color:#6f8297;font-size:12px;margin-top:10px}
-  .err{color:#ff9e9e}
-  .controls{gap:8px}
-  .sublabel{font-size:13px;color:#9fb1c4;margin-top:2px}
-  .divider{height:1px;background:var(--stroke);margin:14px 0}
+:root{
+  --bg:#0d1722; --card:#111e2b; --card2:#0f1b27; --muted:#a9b8c7; --text:#eaf0f6;
+  --edge:#1a2a3a; --accent:#3a83ff;
+  --green:#2ecc71; --amber:#f4b740; --red:#ff5565;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:500 16px/1.5 ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+h1{font:800 clamp(22px,5vw,38px)/1.15 ui-sans-serif;margin:24px 0}
+h2{font:700 20px/1.25 ui-sans-serif;margin:0 0 12px}
+small,.muted{color:var(--muted)}
+.container{max-width:980px;margin:0 auto;padding:18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input[type=text]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--edge);background:#0b1620;color:var(--text)}
+select{appearance:none;padding:10px 14px;border-radius:10px;border:1px solid var(--edge);background:#0b1620;color:var(--text)}
+button{padding:12px 18px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;cursor:pointer}
+button:disabled{opacity:.6;cursor:not-allowed}
+
+.panel{background:var(--card);border:1px solid var(--edge);border-radius:16px;padding:18px;margin:14px 0}
+.flex{display:flex;gap:18px;align-items:center}
+.badge{display:inline-block;padding:8px 12px;border-radius:12px;background:#1c2a3b;border:1px solid var(--edge);font-weight:800}
+
+.gauge{width:min(140px,30vw);aspect-ratio:1/1;border-radius:50%;
+  background:conic-gradient(var(--amber) 0 0,#223041 0 360deg);position:relative;flex:0 0 auto}
+.gauge>.hole{position:absolute;inset:12px;aspect-ratio:1/1;border-radius:50%;
+  background:var(--bg);border:1px solid var(--edge);display:flex;align-items:center;justify-content:center;
+  font:800 clamp(22px,6vw,36px)/1 ui-sans-serif;color:var(--text)}
+.crc-badge{background:#2a2215;border:1px solid #3c2f1a}
+.grid{display:grid;gap:14px}
+@media(min-width:680px){ .grid.cols-2{grid-template-columns:1fr 1fr} }
+@media(min-width:980px){ .grid.cols-3{grid-template-columns:1fr 1fr 1fr} }
+
+.card{background:var(--card2);border:1px solid var(--edge);border-radius:16px;padding:16px;position:relative;overflow:hidden}
+.card .vline.__edge{position:absolute;left:0;top:0;bottom:0;width:4px;opacity:.9}
+.v-green{background:linear-gradient(90deg,#1f8f5f,#2ecc71)}
+.v-amber{background:linear-gradient(90deg,#9b7a17,#f4b740)}
+.v-red{background:linear-gradient(90deg,#a11c2a,#ff5565)}
+.kv{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.kv .series{font:700 18px/1.2 ui-sans-serif}
+.kv .code{background:#1c2a3b;border-radius:10px;padding:6px 10px;border:1px solid var(--edge);font-weight:700}
+.value{font:800 clamp(22px,6vw,34px)/1.1 ui-sans-serif;margin:8px 0}
+.sub{display:flex;gap:10px;align-items:center;color:var(--muted)}
+.bandbar{height:6px;border-radius:999px;background:
+ linear-gradient(90deg,var(--green),var(--amber),var(--red));opacity:.9}
+.card .explain{margin-top:10px;color:var(--muted)}
+footer{margin:32px 0 12px;text-align:center;color:#7f91a6;font-size:13px}
+ul.clean{margin:0 0 0 18px;padding:0;display:grid;gap:6px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>The Marshall Stock Market Crash Composite Indicator</h1>
+<div class="container">
+  <h1>The Marshall Stock Market Crash Composite Indicator</h1>
 
-    <div class="panel">
-      <div class="row controls">
-        <input id="apiKey" style="flex:1 1 320px" value="b78d7171c0fc257622597099f88fa7f7" />
-        <select id="weightMode">
-          <option value="simple">Simple (equal)</option>
-          <option value="basic">Basic (macro tilt)</option>
-          <option value="advanced" selected>Advanced (predictive tilt)</option>
-          <option value="custom">Custom</option>
-        </select>
-        <button id="runBtn">Run / Refresh</button>
-      </div>
-      <div class="sublabel">Your key is stored locally in this browser only.</div>
+  <div class="panel">
+    <div class="row">
+      <input id="apiKey" type="text" placeholder="FRED API key" value="b78d7171c0fc2576225970999f88fa7f7"/>
+      <select id="mode">
+        <option value="advanced">Advanced (predictive tilt)</option>
+        <option value="simple">Simple (equal weights)</option>
+      </select>
+      <button id="runBtn">Run / Refresh</button>
     </div>
-
-    <div id="crcPanel" class="panel">
-      <div class="crc">
-        <div id="crcGauge" class="gauge"><div class="hole" id="crcNum">--</div></div>
-        <div>
-          <div id="crcChip" class="badge crc-chip">CRC: --</div>
-          <div class="small" id="runMeta">Composite = average of indicator percentiles vs last 10y (with sensible inverts).</div>
-          <div class="small note" id="cadenceHint">Data cadence varies (daily/weekly/monthly).</div>
-        </div>
-      </div>
-    </div>
-
-    <div id="exec" class="panel">
-      <h2>Executive Summary</h2>
-      <div id="execBody" class="note">Run the dashboard to generate a current analyst note.</div>
-    </div>
-
-    <div id="chartBox" class="panel">
-      <div class="kv">
-        <h2>Interactive Chart</h2>
-        <select id="chartSelect" class="badge">
-          <!-- populated in JS -->
-        </select>
-      </div>
-      <div id="plot" style="height:280px"></div>
-      <div class="small muted">Pinch to zoom • drag to pan • double-tap to autoscale.</div>
-    </div>
-
-    <div class="panel">
-      <h2>Indicators</h2>
-      <div id="cards" class="grid"></div>
-    </div>
-
-    <div class="footer">v2 mobile‑first · single‑proxy fetch (fast) · resilient to partial failures</div>
   </div>
 
+  <div class="panel">
+    <div class="flex">
+      <div class="gauge"><div id="crcNum" class="hole">--</div></div>
+      <div>
+        <div id="crcBadge" class="badge crc-badge">CRC: --</div>
+        <div class="muted" id="runMeta" style="margin-top:10px">Composite = average of indicator percentiles vs last 10y (with sensible inverts).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Executive Summary</h2>
+    <div id="execBody" class="muted">Run the dashboard to generate a current analyst note.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Indicators</h2>
+    <div id="cards" class="grid cols-2 cols-3"></div>
+  </div>
+
+  <footer>Marshall Composite • Built on public FRED data</footer>
+</div>
+
 <script>
-/* -------------------------- Config & helpers -------------------------- */
-
-const DEFAULT_PROXY = 'https://api.codetabs.com/v1/proxy/?quest=';
-const FRED = (endpoint, params) => {
-  const usp = new URLSearchParams(params);
-  return `https://api.stlouisfed.org/fred/${endpoint}?${usp.toString()}`;
+/* ----------------------------- Utilities ----------------------------- */
+const $ = sel => document.querySelector(sel);
+const el = $;
+const FRED_BASE = 'https://api.stlouisfed.org/';
+const FRED = (path,params) => {
+  const url = new URL('fred/'+path, FRED_BASE);
+  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+  return url.toString();
 };
-
+const proxies = [
+  u => u, // direct
+  u => 'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u),
+];
+async function getJSON(url){
+  let lastErr;
+  for(const wrap of proxies){
+    try{
+      const r = await fetch(wrap(url), {mode:'cors'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error('fetch failed');
+}
+function tenYearsAgo(){
+  const d = new Date(); d.setFullYear(d.getFullYear()-10);
+  return d.toISOString().slice(0,10);
+}
+function percentileRank(arr, x){
+  const vals = arr.filter(v=>Number.isFinite(v)).sort((a,b)=>a-b);
+  if(vals.length===0 || !Number.isFinite(x)) return null;
+  let lo = 0, hi = vals.length;
+  while(lo<hi){ const m=(lo+hi>>1); if(vals[m]<=x) lo=m+1; else hi=m; }
+  return Math.round( 100 * lo / vals.length );
+}
+function band(score){
+  if(score==null) return {name:'—', color:'#445', cls:''};
+  if(score<40) return {name:'Green', color:'var(--green)', cls:'v-green'};
+  if(score<=70) return {name:'Amber', color:'var(--amber)', cls:'v-amber'};
+  return {name:'Red', color:'var(--red)', cls:'v-red'};
+}
+function bandLabel(score){
+  if(score==null) return {text:'—', cls:'', expl:'No score available.'};
+  if(score<40) return {text:'Green', cls:'v-green', expl:'Below its decade median → easier/healthier than usual.'};
+  if(score<=70) return {text:'Amber', cls:'v-amber', expl:'Around/above median → mixed or tighter than usual.'};
+  return {text:'Red', cls:'v-red', expl:'Near top of decade range → elevated risk vs usual.'};
+}
 const fmt = {
-  pct: v => isFinite(v) ? (v*1).toFixed(2)+'%' : '—',
-  num: v => isFinite(v) ? Number(v).toLocaleString() : '—',
-  one: v => isFinite(v) ? (+v).toFixed(2) : '—',
-  level: v => isFinite(v) ? (+v).toFixed(2) : '—'
+  pct:x => Number.isFinite(x)? (x*100).toFixed(2)+'%' : '—',
+  num:x => Number.isFinite(x)? Number(x).toLocaleString() : '—',
+  level:x => Number.isFinite(x)? (Math.abs(x)>=1000? Number(x).toLocaleString(): (+x.toFixed(4))).toString() : '—'
 };
-const daysAgo = n=> new Date(Date.now()-n*864e5).toISOString().slice(0,10);
-const tenYearsAgo = ()=> {
-  const d = new Date(); d.setFullYear(d.getFullYear()-10); return d.toISOString().slice(0,10);
-};
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 
-/* Indicator catalogue (id, name, series, unit, invert?, fmt, cadence, category, scored?) */
+/* ----------------------------- Indicator set ----------------------------- */
 const INDICATORS = [
-  {id:'DGS10', name:'10Y Treasury yield', unit:'%', fmt:'pct', invert:false, cadence:'daily', cat:'yields', scored:true},
-  {id:'T10Y2Y', name:'10Y–2Y spread', unit:'%', fmt:'pct', invert:true, cadence:'daily', cat:'yields', scored:true},
-  {id:'T10Y3M', name:'10Y–3M spread', unit:'%', fmt:'pct', invert:true, cadence:'daily', cat:'yields', scored:true},
-  {id:'BAMLH0A0HYM2', name:'ICE BofA HY OAS', unit:'%', fmt:'pct', invert:true, cadence:'daily', cat:'credit', scored:true},
-  {id:'STLFSI4', name:'St. Louis Financial Stress (v4)', unit:'', fmt:'one', invert:true, cadence:'weekly', cat:'credit', scored:true},
-  {id:'NFCI', name:'Chicago Fed Financial Conditions', unit:'', fmt:'one', invert:true, cadence:'weekly', cat:'credit', scored:true},
+  // Rates & curve
+  { id:'DGS10',   name:'10Y Treasury yield', code:'DGS10',     fmt:'pct100', invert:false, cadence:'daily',   cat:'yields',   scored:true,  why:'Benchmark long rate; higher real financing costs and valuation pressure.' },
+  { id:'T10Y2Y',  name:'10Y–2Y spread',      code:'T10Y2Y',    fmt:'pct',    invert:false, cadence:'daily',   cat:'yields',   scored:true,  why:'Curve slope; deep negatives & tightness precede slowdowns.' },
+  { id:'T10Y3M',  name:'10Y–3M spread',      code:'T10Y3M',    fmt:'pct',    invert:false, cadence:'daily',   cat:'yields',   scored:true,  why:'Front‑end tightness; inversion historically leads recessions.' },
 
-  {id:'SP500', name:'S&P 500 index', unit:'', fmt:'level', invert:null, cadence:'daily', cat:'valuation', scored:false},
-  {id:'VIXCLS', name:'VIX index', unit:'', fmt:'level', invert:false, cadence:'daily', cat:'vol', scored:true},
+  // Credit & stress
+  { id:'BAMLH0A0HYM2', name:'ICE BofA HY OAS', code:'BAMLH0A0HYM2', fmt:'pct', invert:false, cadence:'daily', cat:'credit', scored:true, why:'High‑yield spread; widening = credit stress.' },
+  { id:'STLFSI4',  name:'St. Louis Financial Stress (v4)', code:'STLFSI4', fmt:'level', invert:false, cadence:'weekly', cat:'credit', scored:true, why:'Systemic stress; higher = tighter conditions.' },
+  { id:'NFCI',     name:'Chicago Fed Financial Conditions', code:'NFCI', fmt:'level', invert:false, cadence:'weekly', cat:'credit', scored:true, why:'Funding & risk appetite; higher = tighter.' },
 
-  {id:'UNRATE', name:'Unemployment rate', unit:'%', fmt:'pct', invert:false, cadence:'monthly', cat:'labor', scored:true},
-  {id:'ICSA', name:'Initial jobless claims (wkly)', unit:'', fmt:'num', invert:false, cadence:'weekly', cat:'labor', scored:true},
+  // Market
+  { id:'SP500',    name:'S&P 500 index', code:'SP500', fmt:'level', invert:null, cadence:'daily', cat:'valuation', scored:false, why:'Level context (display only).' },
+  { id:'VIXCLS',   name:'VIX index',     code:'VIXCLS', fmt:'level', invert:false, cadence:'daily', cat:'vol', scored:true, why:'Equity volatility; higher = pricier crash insurance.' },
+  { id:'BUFFETT_PROXY', name:'Buffett Ratio (Wilshire/GDP) — proxy', code:'synthetic', fmt:'level', invert:false, cadence:'quarterly', cat:'valuation', scored:true, why:'Total market value vs GDP; higher valuation = greater drawdown vulnerability.' },
 
-  {id:'CPIAUCSL', name:'CPI (headline)', unit:'', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true},
-  {id:'CPILFESL', name:'Core CPI', unit:'', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true},
-  {id:'PCEPI', name:'PCE prices', unit:'', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true},
+  // Labor
+  { id:'UNRATE',   name:'Unemployment rate', code:'UNRATE', fmt:'pct', invert:true, cadence:'monthly', cat:'labor', scored:true, why:'Labor slack; rising unemployment lifts drawdown odds.' },
+  { id:'ICSA',     name:'Initial jobless claims (wkly)', code:'ICSA', fmt:'num', invert:true, cadence:'weekly', cat:'labor', scored:true, why:'Early labor signal; rising claims warn of cooling.' },
 
-  {id:'INDPRO', name:'Industrial production', unit:'', fmt:'level', invert:true, cadence:'monthly', cat:'activity', scored:true},
-  {id:'TCU', name:'Capacity utilization', unit:'', fmt:'level', invert:true, cadence:'monthly', cat:'activity', scored:true},
-  {id:'RSAFS', name:'Retail sales (advance)', unit:'', fmt:'num', invert:true, cadence:'monthly', cat:'activity', scored:true},
-  {id:'HOUST', name:'Housing starts', unit:'', fmt:'num', invert:true, cadence:'monthly', cat:'housing', scored:true},
-  {id:'PERMIT', name:'Building permits', unit:'', fmt:'num', invert:true, cadence:'monthly', cat:'housing', scored:true},
+  // Prices
+  { id:'CPIAUCSL', name:'CPI (headline)', code:'CPIAUCSL', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true, why:'Inflation backdrop; higher keeps policy tighter.' },
+  { id:'CPILFESL', name:'Core CPI', code:'CPILFESL', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true, why:'Underlying inflation persistence.' },
+  { id:'PCEPI',    name:'PCE prices', code:'PCEPI', fmt:'level', invert:false, cadence:'monthly', cat:'prices', scored:true, why:'Fed‑preferred inflation gauge.' },
 
-  {id:'UMCSENT', name:'UMich consumer sentiment', unit:'', fmt:'level', invert:true, cadence:'monthly', cat:'sentiment', scored:true},
-  {id:'DTWEXBGS', name:'Trade-weighted USD (broad)', unit:'', fmt:'level', invert:false, cadence:'weekly', cat:'usd', scored:true},
-
-  // Buffett proxy: relative Wilshire vs GDP over the last decade, percentiled & displayed (scored true but low weight)
-  {id:'BUFFETT_PROXY', name:'Buffett Ratio (Wilshire/GDP) — proxy', unit:'', fmt:'one', invert:false, cadence:'quarterly', cat:'valuation', scored:true, synth:true}
+  // Activity / housing / sentiment / USD
+  { id:'INDPRO',   name:'Industrial production', code:'INDPRO', fmt:'level', invert:true, cadence:'monthly', cat:'activity', scored:true, why:'Real‑economy breadth; weakness raises risk.' },
+  { id:'TCU',      name:'Capacity utilization', code:'TCU', fmt:'level', invert:true, cadence:'monthly', cat:'activity', scored:true, why:'Slack vs overheating; low utilization = weak demand.' },
+  { id:'RSAFS',    name:'Retail sales (advance)', code:'RSAFS', fmt:'num', invert:true, cadence:'monthly', cat:'activity', scored:true, why:'Household demand; softness signals slower growth.' },
+  { id:'HOUST',    name:'Housing starts', code:'HOUST', fmt:'num', invert:true, cadence:'monthly', cat:'housing', scored:true, why:'Cyclical bellwether; weakness often leads downturns.' },
+  { id:'PERMIT',   name:'Building permits', code:'PERMIT', fmt:'num', invert:true, cadence:'monthly', cat:'housing', scored:true, why:'Leading housing gauge; softness flags future activity.' },
+  { id:'UMCSENT',  name:'UMich consumer sentiment', code:'UMCSENT', fmt:'level', invert:true, cadence:'monthly', cat:'sentiment', scored:true, why:'Household mood; weakness → slower spending.' },
+  { id:'DTWEXBGS', name:'Trade‑weighted USD (broad)', code:'DTWEXBGS', fmt:'level', invert:false, cadence:'weekly', cat:'usd', scored:true, why:'Stronger USD tightens global financial conditions.' },
 ];
 
-/* Weights per mode by category (normalized later) */
-const WEIGHT_MODES = {
-  simple: { yields:1, credit:1, prices:1, labor:1, activity:1, housing:1, sentiment:1, usd:1, vol:1, valuation:1 },
-  basic:  { yields:1.2, credit:1.2, prices:1.1, labor:1.1, activity:1, housing:1, sentiment:0.9, usd:0.9, vol:1.0, valuation:1.0 },
-  advanced:{ yields:1.4, credit:1.5, prices:1.1, labor:1.3, activity:0.9, housing:1.0, sentiment:0.9, usd:0.9, vol:1.0, valuation:0.8 },
-  custom:  { yields:1.4, credit:1.3, prices:1.0, labor:1.2, activity:1.0, housing:1.0, sentiment:1.0, usd:1.0, vol:1.0, valuation:1.0 }
-};
-
-/* -------------------------- Fetch layer -------------------------- */
-const getJSON = async (url) => {
-  const r = await fetch(DEFAULT_PROXY + encodeURIComponent(url));
-  if(!r.ok) throw new Error('proxy/fetch error');
-  return r.json();
-};
-
-async function fetchSeries(id, apiKey, start=tenYearsAgo()){
-  // Special synthetic Buffett proxy
-  if(id==='BUFFETT_PROXY'){
+/* -------------------------- Data fetch & scoring -------------------------- */
+async function fetchSeries(meta, apiKey, start=tenYearsAgo()){
+  if(meta.id==='BUFFETT_PROXY'){
+    // Buffett proxy = (Wilshire / GDP) normalized to base period, then ratio
     const wil = await getJSON(FRED('series/observations',{series_id:'WILL5000INDFC',api_key:apiKey,file_type:'json',observation_start:start}));
     const gdp = await getJSON(FRED('series/observations',{series_id:'GDP',api_key:apiKey,file_type:'json',observation_start:start}));
-    // Normalize both to 100 at their own 10y start to create a ratio proxy
-    const w = wil.observations.filter(o=>o.value!=='.' && o.value!=='NaN').map(o=>({t:o.date,v:+o.value}));
-    const g = gdp.observations.filter(o=>o.value!=='.' && o.value!=='NaN').map(o=>({t:o.date,v:+o.value}));
-    if(!w.length || !g.length) return {latest:null, history:[], date:null};
+    const w = (wil.observations||[]).filter(o=>o.value!=='.').map(o=>({t:o.date,v:+o.value}));
+    const g = (gdp.observations||[]).filter(o=>o.value!=='.').map(o=>({t:o.date,v:+o.value}));
+    if(!w.length || !g.length) return {latest:null,date:null,history:[]};
     const w0=w[0].v, g0=g[0].v;
-    const map = new Map(g.map(x=>[x.t, x.v/g0*100]));
-    const hist = w.map(x=>{
-      const gv = map.get(x.t) ?? null;
-      return (gv? {t:x.t, v:(x.v/w0*100)/gv*100} : null);
-    }).filter(Boolean);
-    const latest = hist[hist.length-1];
-    return {latest:latest?.v??null, date:latest?.t??null, history:hist};
+    const G = new Map(g.map(x=>[x.t, x.v/g0*100]));
+    const hist = w.map(x=> G.has(x.t) ? {t:x.t, v:(x.v/w0*100)/(G.get(x.t))*100} : null).filter(Boolean);
+    const last = hist[hist.length-1];
+    return {latest:last?.v??null,date:last?.t??null,history:hist};
   }
-
-  const res = await getJSON(FRED('series/observations',{series_id:id,api_key:apiKey,file_type:'json',observation_start:start}));
-  const obs = (res.observations||[]).filter(o=>o.value!=='.' && o.value!=='NaN').map(o=>({t:o.date,v:+o.value}));
-  const latest = obs[obs.length-1];
-  return {latest: latest?.v ?? null, date: latest?.t ?? null, history: obs};
+  const r = await getJSON(FRED('series/observations',{series_id:meta.code,api_key:apiKey,file_type:'json',observation_start:start}));
+  const obs = (r.observations||[]).filter(o=>o.value!=='.').map(o=>({t:o.date,v:+o.value}));
+  const last = obs[obs.length-1]||{};
+  return {latest:last.v??null,date:last.t??null,history:obs};
+}
+function toDisplay(meta, v){
+  if(!Number.isFinite(v)) return '—';
+  if(meta.fmt==='pct') return (+v).toFixed(2)+'%';
+  if(meta.fmt==='pct100') return (+v).toFixed(2)+'%'; // DGS10 comes 4.33 (already %)
+  if(meta.fmt==='num') return Number(v).toLocaleString();
+  return fmt.level(v);
+}
+function scoreFromHistory(meta, history){
+  if(!history.length) return null;
+  const vals = history.map(h=>h.v);
+  const latest = vals[vals.length-1];
+  const raw = percentileRank(vals, latest);
+  if(raw==null) return null;
+  // invert if "good high" should be low risk
+  const s = meta.invert ? (100-raw) : raw;
+  return Math.max(0,Math.min(100,s));
 }
 
-/* Percentile vs last 10y with sensible invert */
-function scoreFromHistory(history, latest, invert=false){
-  if(!history?.length || latest==null) return null;
-  const vals = history.map(d=>d.v).filter(v=>isFinite(v));
-  vals.sort((a,b)=>a-b);
-  let rank = vals.findIndex(v=>v>latest);
-  if(rank===-1) rank = vals.length;
-  let pct = (rank/vals.length)*100; // 0..100
-  if(invert) pct = 100-pct;
-  return Math.round(pct);
+/* -------------------------- Rendering helpers -------------------------- */
+function crcFromScores(scores, mode){
+  // Simple = equal weights over scored items
+  const items = INDICATORS.filter(m=>m.scored).map(m=>scores[m.id]).filter(s=>s!=null);
+  if(!items.length) return null;
+  if(mode==='simple') return Math.round(items.reduce((a,b)=>a+b,0)/items.length);
+
+  // Advanced (predictive tilt): overweight yields & credit; underweight valuation
+  const wMap = {
+    yields:1.4, credit:1.4, labor:1.1, prices:1.1,
+    activity:1.0, housing:1.0, sentiment:0.9, usd:1.0, vol:1.0, valuation:0.8
+  };
+  const pairs = INDICATORS.filter(m=>m.scored).map(m=>({w:wMap[m.cat]??1, s:scores[m.id]})).filter(x=>x.s!=null);
+  const wsum = pairs.reduce((a,b)=>a+b.w,0);
+  const wavg = pairs.reduce((a,b)=>a+b.w*b.s,0)/wsum;
+  return Math.round(wavg);
 }
 
-/* -------------------------- UI build -------------------------- */
-const el = s=>document.querySelector(s);
-const cardsEl = el('#cards');
-const chartSel = el('#chartSelect');
-let state = {
-  dataById:{}, scores:{}, mode:'advanced', crc:null, apiKey:'', lastRun:null
-};
+function writeExecSummary(state, mode){
+  const {scores, latest} = state;
+  const catAgg = {};
+  for(const m of INDICATORS){
+    if(!m.scored) continue;
+    const s = scores[m.id]; if(s==null) continue;
+    (catAgg[m.cat]??=[]).push(s);
+  }
+  const avg = o => Object.fromEntries(Object.entries(o).map(([k,v])=>[k, Math.round(v.reduce((a,b)=>a+b,0)/v.length)]));
+  const C = avg(catAgg);
+  const top = Object.entries(C).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`${labelCat(k)} ${v} (${band(v).name})`).join(', ');
+  const low = Object.entries(C).sort((a,b)=>a[1]-b[1]).slice(0,2).map(([k,v])=>`${labelCat(k)} ${v} (${band(v).name})`).join(', ');
 
-function buildCards(){
-  cardsEl.innerHTML='';
+  const crc = state.crc, b = band(crc).name;
+  const bullets = [];
+  bullets.push(`CRC **${crc} — ${b}**. Scores are where each series sits within its **own last‑10‑year range** (after sensible flips). Higher = riskier vs normal.`);
+  if(top) bullets.push(`**Main pressures:** ${top}.`);
+  if(low) bullets.push(`**Offsets:** ${low}.`);
+  bullets.push('**Watch next:** curve steepening led by the front end (10Y–3M rising while 3M stays high); a decisive widening in HY OAS / stress gauges; and a steady climb in claims confirming softer hiring. A synchronized move would push CRC toward Red; easing OAS with steady claims would pull it toward Green.`);
+  el('#execBody').innerHTML = `<ul class="clean">${bullets.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+}
+function labelCat(c){
+  return ({
+    yields:'Yields/Curve', credit:'Credit/Stress', prices:'Inflation',
+    labor:'Labor', activity:'Activity', housing:'Housing', sentiment:'Sentiment',
+    usd:'USD', vol:'Volatility', valuation:'Valuation'
+  })[c]||c;
+}
+
+function renderCards(state){
+  const wrap = el('#cards'); wrap.innerHTML = '';
   INDICATORS.forEach(meta=>{
-    const c = document.createElement('div'); c.className='card'; c.id='card-'+meta.id;
-    c.innerHTML = `
-      <div class="kicker">
-        <h3 style="margin:0">${meta.name}</h3>
-        <span class="pill">${meta.synth?'synthetic':meta.id}</span>
-        ${meta.scored? '': '<span class="pill">display‑only</span>'}
+    const L = state.latest[meta.id]||{};
+    const score = state.scores[meta.id] ?? null;
+    const bandInfo = bandLabel(score);
+    const card = document.createElement('div'); card.className='card';
+    card.id = 'card-'+meta.id;
+    card.innerHTML = `
+      <div class="vline __edge ${bandInfo.cls}"></div>
+      <div class="kv">
+        <div class="series">${meta.name}</div>
+        <div class="code">${meta.id==='BUFFETT_PROXY'?'synthetic':meta.code}</div>
       </div>
-      <div class="kv"><div class="value" id="v-${meta.id}">—</div><div class="unit" id="d-${meta.id}">—</div></div>
-      <div class="hint" id="h-${meta.id}"></div>
+      <div class="value" id="v-${meta.id}">${toDisplay(meta, L.v)}</div>
+      <div class="sub">
+        <span>score <b>${score==null?'—':score}</b></span>
+        <span>•</span>
+        <span>${L.t?new Date(L.t).toISOString().slice(0,10):'—'}</span>
+      </div>
+      <div class="bandbar"></div>
+      <div class="explain" id="h-${meta.id}">
+        <b>Baseline:</b> ${bandInfo.text}. <span class="muted">${bandInfo.expl}</span><br/>
+        <b>What this tracks:</b> ${meta.why}
+      </div>
     `;
-    cardsEl.appendChild(c);
+    wrap.appendChild(card);
   });
 }
 
-function setIndicatorCard(meta, latest, date, score){
-  const v = el('#v-'+meta.id), d = el('#d-'+meta.id), h = el('#h-'+meta.id), card = el('#card-'+meta.id);
-  let fmtfn = fmt[meta.fmt] || fmt.one;
-  v.textContent = (meta.fmt==='pct' ? (isFinite(latest)? (latest).toFixed(2)+'%' : '—') : fmtfn(latest));
-  d.textContent = date? new Date(date).toISOString().slice(0,10): '—';
-  const blurb = {
-    yields:'Benchmark long rate / curve slope.',
-    credit:'Funding & risk appetite; higher = tighter.',
-    prices:'Inflation backdrop; higher keeps policy tighter.',
-    labor:'Labor slack; rising unemployment/claims lift risk.',
-    activity:'Real‑economy breadth; softness raises risk.',
-    housing:'Cyclical bellwether; weakness often leads turns.',
-    sentiment:'Household mood; weakness → slower spending.',
-    usd:'Stronger USD tightens global conditions.',
-    vol:'Equity volatility; higher = pricier crash insurance.',
-    valuation:'High valuation = greater drawdown vulnerability.'
-  }[meta.cat] || '';
-  h.textContent = blurb;
-
-  // colored risk bar
-  let bar = card.querySelector('.vline');
-  if(!bar){ bar = document.createElement('div'); bar.className='vline'; card.prepend(bar); }
-  if(score==null) { bar.className='vline'; bar.style.background='#314355'; }
-  else if(score<40) bar.className='vline v-green';
-  else if(score<=70) bar.className='vline v-amber';
-  else bar.className='vline v-red';
+function paintCRC(crc){
+  el('#crcNum').textContent = crc==null?'--':crc;
+  const b = band(crc);
+  el('#crcBadge').textContent = `CRC: ${crc==null?'--':crc} — ${b.name}`;
+  el('#crcBadge').style.borderColor = 'transparent';
+  // ring
+  const deg = crc==null?0: Math.max(3, Math.min(360, Math.round(crc/100*360)));
+  el('.gauge').style.background = `conic-gradient(${b.color} 0 ${deg}deg,#223041 ${deg}deg 360deg)`;
 }
 
-function setCRC(crc){
-  const num = el('#crcNum'), chip = el('#crcChip'), gauge = el('#crcGauge');
-  num.textContent = crc==null?'--':String(crc);
-  let color='var(--amber)', band='AMBER';
-  if(crc!=null){
-    if(crc<40){color='var(--green)';band='GREEN'; chip.classList.add('green'); chip.classList.remove('red')}
-    else if(crc>70){color='var(--red)';band='RED'; chip.classList.add('red'); chip.classList.remove('green')}
-    else {band='AMBER'; chip.classList.remove('green','red')}
-  }
-  chip.textContent = `CRC: ${crc==null?'--':crc} — ${band}`;
-  // 3/4 ring fill to the angle
-  const angle = crc==null?0: (crc/100)*360;
-  gauge.style.background = `conic-gradient(${color} 0 ${angle}deg, #223041 ${angle}deg 360deg)`;
-}
+/* ----------------------------- Main runner ----------------------------- */
+const state = {latest:{}, scores:{}, crc:null, lastRun:null};
 
-/* Dynamic exec summary: short, plain‑English, data‑driven */
-function writeExecSummary(scores, metaMap, mode){
-  const bands={yields:[],credit:[],prices:[],labor:[],activity:[],housing:[],sentiment:[],usd:[],vol:[],valuation:[]};
-  for(const [id,sc] of Object.entries(scores)){
-    const m = metaMap.get(id); if(!m||!m.scored||sc==null) continue;
-    bands[m.cat].push(sc);
-  }
-  const av=(arr)=>arr.length? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length):null;
-  const catAvg={}; Object.keys(bands).forEach(k=>catAvg[k]=av(bands[k]));
-  const hot = Object.entries(catAvg).filter(([k,v])=>v!=null).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const cool = Object.entries(catAvg).filter(([k,v])=>v!=null).sort((a,b)=>a[1]-b[1]).slice(0,2);
-
-  const names = {yields:'yields/curve',credit:'credit & stress',prices:'inflation',labor:'labor',activity:'real activity',housing:'housing',sentiment:'sentiment',usd:'USD',vol:'volatility',valuation:'valuation'};
-  const toLine = (pair)=> `${names[pair[0]]} ${pair[1]}`;
-  const hotLine = hot.length? 'Drivers: ' + hot.map(([k,v])=>`${names[k]} (${v})`).join(', ') + '.' : '';
-  const coolLine = cool.length? 'Offsets: ' + cool.map(([k,v])=>`${names[k]} (${v})`).join(', ') + '.' : '';
-
-  const crc = state.crc;
-  const band = crc<40?'Green':(crc>70?'Red':'Amber');
-  const expl = 'Higher CRC = broader, elevated crash vulnerability vs each indicator’s own last‑decade range (after sensible inverts).';
-
-  const next = 'Watch next: further curve steepening from the front end, any decisive widening in high‑yield OAS or stress gauges, and a turn higher in jobless claims confirming softer labor. A synchronized move would push the CRC toward upper Amber/Red; easing OAS with curve normalization and steady claims would pull it toward Green.';
-
-  el('#execBody').textContent =
-    `CRC ${crc} — ${band}. Mode: ${mode}. ${expl} ${hotLine} ${coolLine} ${next}`;
-}
-
-/* Plotly chart */
-function plotSeries(metaId){
-  const meta = INDICATORS.find(x=>x.id===metaId);
-  const series = state.dataById[metaId]?.history || [];
-  const x = series.map(d=>d.t), y = series.map(d=>d.v);
-  const name = meta?.name || metaId;
-
-  const trace = [{x, y, type:'scatter', mode:'lines', name: metaId, line:{color:'#4da3ff',width:2}}];
-  const layout = {
-    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', showlegend:true,
-    margin:{l:36,r:10,t:10,b:36},
-    xaxis:{gridcolor:'#1f2b3a', zeroline:false, color:'#b8c6d6'},
-    yaxis:{gridcolor:'#1f2b3a', zeroline:false, color:'#b8c6d6'},
-    font:{color:'#cfe2f3'}
-  };
-  Plotly.newPlot('plot', trace, layout, {responsive:true, displayModeBar:false, scrollZoom:true});
-}
-
-/* -------------------------- Run pipeline -------------------------- */
 async function run(){
-  const key = el('#apiKey').value.trim(); if(!key){alert('API key required'); return;}
-  state.apiKey = key; localStorage.setItem('fred_key', key);
-  el('#runBtn').disabled = true; el('#runBtn').textContent = 'Running…';
+  const apiKey = el('#apiKey').value.trim();
+  const mode = el('#mode').value==='advanced'?'advanced':'simple';
+  el('#runBtn').disabled = true; el('#runBtn').textContent='Running…';
   try{
-    // fetch all in parallel
+    state.latest = {}; state.scores={};
     const start = tenYearsAgo();
-    const metaMap = new Map(INDICATORS.map(m=>[m.id,m]));
-    const promises = INDICATORS.map(m=> fetchSeries(m.id, key, start).then(res=>({id:m.id,...res})).catch(_=>({id:m.id,latest:null,date:null,history:[]})));
-    const results = await Promise.all(promises);
-    // store
-    results.forEach(r=> state.dataById[r.id]=r);
-
-    // compute scores
-    const scores={};
-    for(const m of INDICATORS){
-      const rec = state.dataById[m.id];
-      const sc = m.scored? scoreFromHistory(rec.history, rec.latest, !!m.invert) : null;
-      scores[m.id]=sc;
-      setIndicatorCard(m, rec.latest, rec.date, sc);
+    for(const meta of INDICATORS){
+      const {latest,date,history} = await fetchSeries(meta, apiKey, start);
+      state.latest[meta.id] = {v:latest, t:date};
+      if(meta.scored){
+        let hist = history.map(x=>({t:x.t, v:x.v}));
+        // Convert DGS10 from percent number to %, but FRED already supplies in %
+        const s = scoreFromHistory(meta, hist);
+        state.scores[meta.id] = s;
+      }
     }
-    state.scores = scores;
-
-    // CRC (weighted)
-    const mode = el('#weightMode').value;
-    state.mode = mode;
-    const weights = WEIGHT_MODES[mode];
-    // normalize by total used weights for scored indicators
-    let num=0, den=0;
-    for(const m of INDICATORS){
-      if(!m.scored) continue;
-      const sc = scores[m.id]; if(sc==null) continue;
-      const w = weights[m.cat] ?? 1;
-      num += w*sc; den += w;
-    }
-    const crc = den? Math.round(num/den): null;
-    state.crc = crc; state.lastRun = new Date();
-
-    // UI: CRC area
-    setCRC(crc);
-    el('#runMeta').textContent = `Last run: ${state.lastRun.toLocaleString()} • Mode: ${mode}`;
-    writeExecSummary(scores, metaMap, mode);
-
-    // Chart select
-    chartSel.innerHTML='';
-    INDICATORS.filter(m=>!m.synth).forEach(m=>{
-      const o = document.createElement('option'); o.value=m.id; o.textContent=`${m.name} (${m.id})`;
-      chartSel.appendChild(o);
-    });
-    plotSeries(chartSel.value || 'DGS10');
-
-  }catch(err){
-    console.error(err);
-    alert('Run error. Check network/proxy limits and try again.');
+    state.crc = crcFromScores(state.scores, mode);
+    state.lastRun = new Date();
+    renderCards(state);
+    paintCRC(state.crc);
+    el('#runMeta').textContent = `Last run: ${state.lastRun.toLocaleString()} • Scores are percentiles vs each series’ last 10 years (after sensible inverts).`;
+    writeExecSummary(state, mode);
+  }catch(e){
+    console.error(e);
+    alert('Load error (network or proxy limits). Try again in a moment.');
   }finally{
     el('#runBtn').disabled=false; el('#runBtn').textContent='Run / Refresh';
   }
 }
 
-/* -------------------------- Boot -------------------------- */
-(function init(){
-  const saved = localStorage.getItem('fred_key'); if(saved) el('#apiKey').value = saved;
-  buildCards();
-  chartSel.addEventListener('change', e=>plotSeries(e.target.value));
-  el('#runBtn').addEventListener('click', run);
-  el('#weightMode').addEventListener('change',()=>{ if(state.crc!=null) writeExecSummary(state.scores, new Map(INDICATORS.map(m=>[m.id,m])), state.mode); });
-})();
+/* ----------------------------- Boot & UI ----------------------------- */
+document.getElementById('runBtn').addEventListener('click', run);
 </script>
 </body>
 </html>
