@@ -17,7 +17,6 @@
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
   .wrap{max-width:980px;margin:0 auto;padding:26px 16px 100px}
   h1{margin:0 0 6px;font-size:clamp(24px,5.6vw,42px);line-height:1.1;font-weight:800;letter-spacing:.2px}
-  .sub{color:var(--muted);margin:4px 0 16px}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   input,select,button,textarea{font:600 15px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
   input.api{flex:1;min-width:260px;background:var(--soft);border:1px solid var(--ringTrack);color:var(--text);
@@ -43,24 +42,24 @@
   .ind .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
   .id{background:var(--chip);color:var(--chipText);border-radius:999px;padding:4px 8px;font-size:12px}
   .val{font-size:32px;font-weight:800;letter-spacing:.2px}
-  .exec h2{margin:0 0 8px;font-size:22px}
-  .exec .body{font-size:17px;line-height:1.7;white-space:pre-wrap}
+  .exec h2{margin:0 0 8px;font-size:20px}
+  .exec .body{font-size:16px;line-height:1.7;white-space:pre-wrap}
   .settings{display:grid;gap:10px}
   .pill{display:inline-block;background:var(--chip);color:var(--chipText);padding:4px 8px;border-radius:999px;font-size:12px}
   textarea#custom{width:100%;min-height:110px;background:var(--soft);border:1px solid var(--ringTrack);border-radius:12px;color:var(--text);padding:10px}
-  .hidden{display:none!important}
-  /* Chart */
-  .chartWrap{position:relative;height:260px}
-  canvas{display:block;width:100%;height:100%;border-radius:10px;background:#0b1420;border:1px solid #1c2a3a}
-  .chartHead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
   .miniMeta{color:#bcd2ff;font-size:12px}
   .btn{background:#22314a;color:#cfe0ff;border:1px solid #2b3b58;border-radius:10px;padding:8px 10px;font-weight:700}
+  .hidden{display:none!important}
+
+  /* Chart */
+  .chartHead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+  .chartWrap{position:relative;height:260px;touch-action:none}
+  canvas{display:block;width:100%;height:100%;border-radius:10px;background:#0b1420;border:1px solid #1c2a3a}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>The Marshall Stock Market Crash Composite Indicator</h1>
-  <div class="sub">U.S. crash-risk dashboard from 20+ economic &amp; market indicators.</div>
 
   <div class="row">
     <input id="apiKey" class="api" placeholder="YOUR_FRED_API_KEY" autocomplete="off">
@@ -74,7 +73,7 @@
   </div>
 
   <div id="customBox" class="panel settings hidden">
-    <div class="muted">Paste weights JSON (keys are series IDs). Unknown IDs ignored; weights auto-renormalized to the indicators that loaded.</div>
+    <div class="muted">Paste weights JSON (keys are series IDs). Unknown IDs ignored; weights auto-renormalized to what loaded.</div>
     <div class="pill">Example: {"T10Y2Y":0.2,"T10Y3M":0.2,"BAMLH0A0HYM2":0.2,"STLFSI4":0.1,"NFCI":0.1,"UNRATE":0.05,"ICSA":0.05,"VIXCLS":0.05,"BUFFETT":0.05}</div>
     <textarea id="custom" spellcheck="false" placeholder='{"T10Y2Y":0.2,"T10Y3M":0.2,"BAMLH0A0HYM2":0.2,"STLFSI4":0.1,"NFCI":0.1,"UNRATE":0.05,"ICSA":0.05,"VIXCLS":0.05,"BUFFETT":0.05}'></textarea>
   </div>
@@ -92,11 +91,11 @@
       </div>
       <div>
         <div id="crcBadge" class="badge amber">CRC: — — AMBER</div>
-        <div class="muted" style="margin-top:6px">Composite = weighted average of each indicator’s percentile vs last 10y (with sensible inverts). S&P level is display-only (weight 0).</div>
+        <div id="lastUpdated" class="miniMeta" style="margin-top:6px"></div>
       </div>
     </div>
     <h2 style="margin:14px 0 6px">Executive Summary</h2>
-    <div id="execBody" class="body muted">Paste your key and press Run. The narrative will auto-generate (up to ~1,000 words) from the live readings.</div>
+    <div id="execBody" class="body muted">Paste your key and press Run. The narrative will auto-generate from the live readings.</div>
 
     <!-- History toggle -->
     <div style="margin-top:14px">
@@ -110,8 +109,8 @@
   <section class="panel">
     <div class="chartHead">
       <div>
-        <strong>FRED Line Chart</strong>
-        <div id="chartMeta" class="miniMeta">Select a series to plot the last 2 years.</div>
+        <strong>FRED Line Chart (pinch-zoom & pan)</strong>
+        <div id="chartMeta" class="miniMeta">Two fingers: zoom; one finger: pan; double-tap: reset.</div>
       </div>
       <div>
         <select id="chartSeries" class="mode">
@@ -141,7 +140,7 @@
 /* ================= SHARED CONFIG ================= */
 const $ = s => document.querySelector(s);
 const ringLen = 2*Math.PI*44;
-const state = { rows:[], cache:{} }; // cache series by id for charting
+const state = { rows:[], cache:{}, fetchedAt:null }; // cache series by id for charting
 
 /* Indicator set (SP500 is display-only / weight 0) */
 const SERIES = [
@@ -216,10 +215,12 @@ function fredURL(id,key,start){
   u.searchParams.set('file_type','json');
   if(start) u.searchParams.set('observation_start', start);
   u.searchParams.set('limit','100000');
+  // cache-buster so proxies don’t return stale
+  u.searchParams.set('_', Date.now().toString());
   return u.toString();
 }
 async function fetchRace(url){
-  const tries = proxiers.map(p=>fetch(p(url)).then(r=>r.ok?r.json():Promise.reject(r.status)));
+  const tries = proxiers.map(p=>fetch(p(url), {cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status)));
   const settled = await Promise.allSettled(tries);
   for(const s of settled){ if(s.status==='fulfilled') return s.value; }
   throw new Error('All proxies failed');
@@ -290,7 +291,7 @@ function makeCard(row){
   const el = document.createElement('div'); el.className='card ind';
   const date = row.latest?.date ?? '—';
   const value = row.latest? row.display : '—';
-  const score = Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'score —';
+  const score = Number.isFinite(row.score)? `score ${Math.round(row.score)}` : 'context only';
   el.innerHTML = `
     <div class="top"><div><strong>${row.name}</strong> <span class="id">${row.id}</span></div><div class="muted" style="font-size:12px">${date}</div></div>
     <div class="val">${value}</div>
@@ -299,87 +300,85 @@ function makeCard(row){
   return el;
 }
 
-/* ================= NARRATIVE ENGINE ================= */
+/* ================= NARRATIVE ENGINE (shorter, dynamic) ================= */
 function asPct(v, d=2){ return Number.isFinite(v)? v.toFixed(d)+'%' : '—'; }
 function asNum(v){
   return Number.isFinite(v)? (Math.abs(v)>=1000? Intl.NumberFormat('en-US').format(Math.round(v)) : (Math.round(v*1000)/1000).toString()) : '—';
 }
+function bandName(crc){ return crc>70?'Red':(crc>=40?'Amber':'Green'); }
+
 function buildNarrative(rows, crc, modeLabel){
   const byId = Object.fromEntries(rows.map(r=>[r.id,r]));
   const s = id => byId[id]?.score;
   const v = id => byId[id]?.latest?.value;
-  const band = crc>70?'Red':(crc>=40?'Amber':'Green');
-  const parts = [];
-  parts.push(`Crash Risk Composite (CRC) prints at ${Math.round(crc)} — ${band}. That places overall market conditions in the ${band.toLowerCase()} band on a 0–100 scale where higher reflects greater crash vulnerability relative to each indicator’s own last-decade history. Weighting mode: ${modeLabel}. The gauge is a weighted mean of standardized percentiles, not a forecast; it tells us where we stand within the distribution of recent cycles, and how broad or concentrated the pressure is.`);
+  const band = bandName(crc);
 
-  // Curve
-  const curveFlags = [];
-  if (Number.isFinite(v('T10Y2Y'))) curveFlags.push(`10Y–2Y spread at ${asPct(v('T10Y2Y'))} (score ${Math.round(s('T10Y2Y')||0)})`);
-  if (Number.isFinite(v('T10Y3M'))) curveFlags.push(`10Y–3M at ${asPct(v('T10Y3M'))} (score ${Math.round(s('T10Y3M')||0)})`);
-  if (curveFlags.length){
-    const invNow = (v('T10Y2Y')<0 || v('T10Y3M')<0);
-    parts.push(`Yield curves remain ${invNow?'inverted':'tight but not inverted'}, a classic late-cycle configuration. ${curveFlags.join('; ')}. Elevated curve scores indicate policy restraint that historically precedes slower growth. Watch for bear-steepening (long rates up, front stable) as a potential stress trigger for duration-sensitive sectors.`);
-  }
-  if (Number.isFinite(v('DGS10'))) {
-    parts.push(`The 10-year Treasury yield stands at ${asPct(v('DGS10'))} (score ${Math.round(s('DGS10')||0)}). High scores here imply more restrictive real financing costs and a higher hurdle for equity multiples and rate-sensitive activity.`);
+  // pick highlights based on highest/lowest scores
+  const scored = rows.filter(r=>r.score!=null);
+  const top3 = [...scored].sort((a,b)=>b.score-a.score).slice(0,3);
+  const low3 = [...scored].sort((a,b)=>a.score-b.score).slice(0,3);
+
+  const bullets = [];
+
+  bullets.push(`CRC ${Math.round(crc)} — ${band}. Mode: ${modeLabel}. The score is a weighted percentile blend across indicators over the last decade.`);
+
+  // Curve & rates
+  if (Number.isFinite(v('T10Y2Y')) || Number.isFinite(v('T10Y3M')) || Number.isFinite(v('DGS10'))){
+    const parts = [];
+    if (Number.isFinite(v('T10Y2Y'))) parts.push(`2s10s ${asPct(v('T10Y2Y'))} (score ${Math.round(s('T10Y2Y')||0)})`);
+    if (Number.isFinite(v('T10Y3M'))) parts.push(`10y–3m ${asPct(v('T10Y3M'))} (score ${Math.round(s('T10Y3M')||0)})`);
+    if (Number.isFinite(v('DGS10')))  parts.push(`10y ${asPct(v('DGS10'))} (score ${Math.round(s('DGS10')||0)})`);
+    bullets.push(`Curve/rates: ${parts.join('; ')}.`);
   }
 
-  // Credit & Stress
+  // Credit & stress
   if (Number.isFinite(v('BAMLH0A0HYM2')) || Number.isFinite(v('STLFSI4')) || Number.isFinite(v('NFCI'))){
-    const lines = [];
-    if (Number.isFinite(v('BAMLH0A0HYM2'))) lines.push(`High-yield OAS at ${asPct(v('BAMLH0A0HYM2'))} (score ${Math.round(s('BAMLH0A0HYM2')||0)})`);
-    if (Number.isFinite(v('STLFSI4')))      lines.push(`St. Louis FSI ${asNum(v('STLFSI4'))} (score ${Math.round(s('STLFSI4')||0)})`);
-    if (Number.isFinite(v('NFCI')))         lines.push(`Chicago Fed FCI ${asNum(v('NFCI'))} (score ${Math.round(s('NFCI')||0)})`);
-    parts.push(`Credit conditions and systemic stress: ${lines.join('; ')}. Rising scores here usually precede equity drawdowns as refinancing channels tighten and default risk is repriced. A jump in OAS without commensurate movement in the curve typically signals idiosyncratic credit risk; a broad uptick across OAS and stress indices indicates systemic pressure.`);
-  }
-
-  // Markets / Valuation
-  const mktBits = [];
-  if (Number.isFinite(v('SP500')))  mktBits.push(`S&P 500 level ${asNum(v('SP500'))} (display-only)`);
-  if (Number.isFinite(v('VIXCLS'))) mktBits.push(`VIX ${asNum(v('VIXCLS'))} (score ${Math.round(s('VIXCLS')||0)})`);
-  if (Number.isFinite(v('BUFFETT')))mktBits.push(`“Buffett” ratio ${asPct(v('BUFFETT'))} vs GDP (score ${Math.round(s('BUFFETT')||0)})`);
-  if (mktBits.length){
-    parts.push(`Market internals and valuation context: ${mktBits.join('; ')}. VIX captures near-term crash insurance pricing, while the Buffett ratio anchors long-horizon valuation. A high VIX with low credit stress can be vol-of-vol noise; high valuation with calm credit often leaves markets fragile to macro surprises rather than pricing an imminent shock.`);
+    const parts = [];
+    if (Number.isFinite(v('BAMLH0A0HYM2'))) parts.push(`HY OAS ${asPct(v('BAMLH0A0HYM2'))} (score ${Math.round(s('BAMLH0A0HYM2')||0)})`);
+    if (Number.isFinite(v('STLFSI4')))      parts.push(`FSI ${asNum(v('STLFSI4'))} (score ${Math.round(s('STLFSI4')||0)})`);
+    if (Number.isFinite(v('NFCI')))         parts.push(`NFCI ${asNum(v('NFCI'))} (score ${Math.round(s('NFCI')||0)})`);
+    bullets.push(`Credit/stress: ${parts.join('; ')}.`);
   }
 
   // Labor
   if (Number.isFinite(v('UNRATE')) || Number.isFinite(v('ICSA'))){
-    const L = [];
-    if (Number.isFinite(v('UNRATE'))) L.push(`unemployment ${asPct(v('UNRATE'),1)} (score ${Math.round(s('UNRATE')||0)})`);
-    if (Number.isFinite(v('ICSA')))   L.push(`initial claims ${asNum(v('ICSA'))} (score ${Math.round(s('ICSA')||0)})`);
-    parts.push(`Labor remains the core buffer for household demand: ${L.join('; ')}. Because jobs data lags turning points, a creeping rise in claims often provides the earliest confirmation that private-sector momentum is cooling. Sustained deterioration here tends to amplify existing credit and curve signals.`);
+    const parts = [];
+    if (Number.isFinite(v('UNRATE'))) parts.push(`unemp ${asPct(v('UNRATE'),1)} (score ${Math.round(s('UNRATE')||0)})`);
+    if (Number.isFinite(v('ICSA')))   parts.push(`claims ${asNum(v('ICSA'))} (score ${Math.round(s('ICSA')||0)})`);
+    bullets.push(`Labor: ${parts.join('; ')}.`);
   }
 
   // Inflation
   if (Number.isFinite(v('CPIAUCSL')) || Number.isFinite(v('CPILFESL')) || Number.isFinite(v('PCEPI'))){
-    const I = [];
-    if (Number.isFinite(v('CPIAUCSL'))) I.push(`headline CPI (score ${Math.round(s('CPIAUCSL')||0)})`);
-    if (Number.isFinite(v('CPILFESL'))) I.push(`core CPI (score ${Math.round(s('CPILFESL')||0)})`);
-    if (Number.isFinite(v('PCEPI')))    I.push(`PCE prices (score ${Math.round(s('PCEPI')||0)})`);
-    parts.push(`Price pressures: ${I.join(', ')}. Higher inflation scores sustain restrictive policy for longer and compress valuation headroom. Disinflation eases policy risk but can coincide with weakening nominal growth—important for earnings resilience.`);
+    const parts = [];
+    if (Number.isFinite(v('CPIAUCSL'))) parts.push(`CPI (score ${Math.round(s('CPIAUCSL')||0)})`);
+    if (Number.isFinite(v('CPILFESL'))) parts.push(`Core CPI (score ${Math.round(s('CPILFESL')||0)})`);
+    if (Number.isFinite(v('PCEPI')))    parts.push(`PCE (score ${Math.round(s('PCEPI')||0)})`);
+    bullets.push(`Inflation: ${parts.join(', ')}.`);
   }
 
-  // Real economy
-  const reals = ['INDPRO','TCU','RSAFS','HOUST','PERMIT'].map(id=>({id,sc:s(id)})).filter(x=>Number.isFinite(x.sc));
-  if (reals.length){
-    const hot = reals.filter(x=>x.sc>60).map(x=>x.id);
-    const cool= reals.filter(x=>x.sc<=60).map(x=>x.id);
-    parts.push(`Real-activity mix: elevated scores in ${hot.join(', ') || 'none'}, steadier readings in ${cool.join(', ') || 'none'}. These series are inverted (high activity → low risk), so a high score implies softness vs the decade range. Weakening real-economy breadth typically converts a soft-landing narrative into a mid-cycle slowdown or contraction.`);
-  }
+  // Markets/valuation
+  const mv = [];
+  if (Number.isFinite(v('SP500')))  mv.push(`S&P ${asNum(v('SP500'))} (display)`);
+  if (Number.isFinite(v('VIXCLS'))) mv.push(`VIX ${asNum(v('VIXCLS'))} (score ${Math.round(s('VIXCLS')||0)})`);
+  if (Number.isFinite(v('BUFFETT')))mv.push(`Buffett ${asPct(v('BUFFETT'))} (score ${Math.round(s('BUFFETT')||0)})`);
+  if (mv.length) bullets.push(`Markets: ${mv.join('; ')}.`);
 
-  // USD
-  if (Number.isFinite(v('DTWEXBGS'))){
-    parts.push(`Dollar strength sits at a score of ${Math.round(s('DTWEXBGS')||0)}. A firmer USD tightens global financial conditions, weighs on non-U.S. earnings translation, and can pressure commodity-sensitive segments.`);
-  }
+  // FX
+  if (Number.isFinite(v('DTWEXBGS'))) bullets.push(`USD (DTWEXBGS) score ${Math.round(s('DTWEXBGS')||0)}.`);
+
+  // Extremes
+  if (top3.length) bullets.push(`Top pressures: ${top3.map(r=>`${r.name} (${Math.round(r.score)})`).join(', ')}.`);
+  if (low3.length) bullets.push(`Least stressed: ${low3.map(r=>`${r.name} (${Math.round(r.score)})`).join(', ')}.`);
 
   // Synthesis
   const sc = rows.filter(r=>r.score!=null && r.id!=='SP500').map(r=>r.score);
   const breadth = (!sc.length) ? 'insufficient'
                    : (sc.filter(x=>x>70).length >= sc.length*0.5 ? 'broadly elevated'
                    : (sc.filter(x=>x<40).length >= sc.length*0.5 ? 'broadly benign' : 'mixed'));
-  parts.push(`Putting it together: the CRC’s ${band.toLowerCase()} reading with ${breadth} breadth suggests ${band==='Red'?'defensive posture and liquidity awareness':band==='Amber'?'heightened selectivity and active risk management':'measured risk-taking with guardrails'}. Near-term watch-list: (1) further curve steepening from the front end, (2) a break higher in high-yield OAS or systemic stress indices, and (3) a turn in claims confirming labor softening. A synchronized move would likely push the CRC higher; easing OAS with curve normalization and stable claims would pull it lower.`);
+  bullets.push(`Read: ${band} with ${breadth} breadth. Watch curve shape, HY OAS, and claims for the next move.`);
 
-  return parts.join('\n\n');
+  return bullets.join('\n');
 }
 
 /* ================= WEIGHTING & RENDER ================= */
@@ -416,6 +415,8 @@ async function run(){
   setGauge(0);
 
   try{
+    const startMs = Date.now();
+
     // Load series (parallel)
     const base = await Promise.all(SERIES.map(async meta=>{
       if (meta.id==='BUFFETT'){
@@ -447,6 +448,7 @@ async function run(){
     }));
 
     state.rows = base;
+    state.fetchedAt = new Date();
 
     // Weighted CRC
     const mode = $('#weightMode').value;
@@ -455,15 +457,15 @@ async function run(){
     const crc = Math.round(scored.reduce((a,r)=>a + (r.score* (weights[r.id]??0)), 0));
     setGauge(crc);
 
-    // Narrative
+    // Narrative (short, fully dynamic)
     const modeName = ({simple:'Simple (equal)', basic:'Basic (balanced)', advanced:'Advanced (predictive tilt)', custom:'Custom'})[mode];
     const narrative = buildNarrative(base, crc, modeName);
     $('#execBody').textContent = narrative;
+    $('#lastUpdated').textContent = `Last run: ${state.fetchedAt.toLocaleString()} • Data latency depends on each series (daily/weekly/monthly).`;
 
     // Save to history (keep last 10)
-    const stamp = new Date().toLocaleString();
     const hist = JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
-    hist.unshift({ ts: stamp, crc, mode: modeName, text: narrative });
+    hist.unshift({ ts: state.fetchedAt.toLocaleString(), crc, mode: modeName, text: narrative });
     localStorage.setItem('CRC_HISTORY', JSON.stringify(hist.slice(0,10)));
     updateHistory();
 
@@ -473,8 +475,8 @@ async function run(){
     base.sort((a,b)=> (b.score??-1)-(a.score??-1));
     base.forEach(r=> cards.appendChild(makeCard(r)));
 
-    // Update chart (if series cached for current selection)
-    drawChartFromCache();
+    // Chart refresh (if data cached)
+    drawChart();
 
   }catch(err){
     $('#execBody').textContent = 'Load error (proxy rate limits or network). Try again.';
@@ -491,7 +493,7 @@ function updateHistory(){
   count.textContent = hist.length ? `(${hist.length} saved)` : '(no history yet)';
   histWrap.innerHTML = hist.map(h=>`
     <div class="card" style="margin-top:8px">
-      <div class="muted" style="font-size:12px">${h.ts} • CRC ${h.crc} • ${h.mode}</div>
+      <div class="miniMeta">${h.ts} • CRC ${h.crc} • ${h.mode}</div>
       <div style="white-space:pre-wrap;margin-top:8px">${h.text}</div>
     </div>`).join('');
 }
@@ -500,67 +502,190 @@ $('#toggleHist').addEventListener('click', ()=>{
   $('#toggleHist').textContent = $('#historyBox').classList.contains('hidden') ? '📜 Show History' : '📕 Hide History';
 });
 
-/* ================= CHART ================= */
-function getLastYears(id, years=2){
-  const arr = state.cache[id]||[];
-  if(!arr.length) return [];
-  const lastDate = new Date(arr[arr.length-1].date);
-  const cut = new Date(lastDate); cut.setFullYear(cut.getFullYear()-years);
-  return arr.filter(d=> new Date(d.date) >= cut);
-}
-function drawChartFromCache(){
+/* ================= CHART: pinch-zoom & pan (both axes) ================= */
+const chart = $('#chart');
+let view = { xMin:0, xMax:1, yMin:0, yMax:1 };   // data-space view window
+let baseDomain = null;                            // full data domain
+let touches = {};                                 // active touch points
+
+function getDataForChart(){
   const id = $('#chartSeries').value;
-  const data = getLastYears(id, 2);
-  const canvas = $('#chart'); const ctx = canvas.getContext('2d');
-  // clear
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(!data.length){
-    ctx.fillStyle='#9fb3d9'; ctx.font='14px Inter'; ctx.fillText('No data cached yet. Run the dashboard first.', 16, 24);
-    return;
+  const arr = state.cache[id]||[];
+  if(!arr.length) return null;
+  // default to last ~2 years
+  if(!baseDomain){
+    const xs = arr.map(d=>new Date(d.date).getTime());
+    const ys = arr.map(d=>d.value);
+    baseDomain = {
+      xMin: Math.min(...xs), xMax: Math.max(...xs),
+      yMin: Math.min(...ys), yMax: Math.max(...ys)
+    };
+    // start with a 2-year window if possible
+    const last = baseDomain.xMax;
+    const twoYears = 365*24*3600*1000*2;
+    view.xMin = Math.max(baseDomain.xMin, last - twoYears);
+    view.xMax = baseDomain.xMax;
+    view.yMin = baseDomain.yMin; view.yMax = baseDomain.yMax;
   }
-  const pad = {l:48,r:16,t:16,b:30};
-  const W = canvas.width - pad.l - pad.r, H = canvas.height - pad.t - pad.b;
-  const xs = data.map(d=>new Date(d.date).getTime());
-  const ys = data.map(d=>d.value);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const x = t => pad.l + ( (t-minX)/(maxX-minX) ) * W;
-  const y = v => pad.t + (1 - ( (v-minY)/(maxY-minY) )) * H;
+  return arr;
+}
+function clampView(){
+  if(!baseDomain) return;
+  const minWidth = (baseDomain.xMax - baseDomain.xMin)/200; // avoid zero width
+  const minHeight = (baseDomain.yMax - baseDomain.yMin)/200;
+  // clamp X
+  const width = Math.max(view.xMax - view.xMin, minWidth);
+  if(view.xMin < baseDomain.xMin){ view.xMax += (baseDomain.xMin - view.xMin); view.xMin = baseDomain.xMin; }
+  if(view.xMax > baseDomain.xMax){ view.xMin -= (view.xMax - baseDomain.xMax); view.xMax = baseDomain.xMax; }
+  // clamp Y
+  const height = Math.max(view.yMax - view.yMin, minHeight);
+  if(view.yMin < baseDomain.yMin){ view.yMax += (baseDomain.yMin - view.yMin); view.yMin = baseDomain.yMin; }
+  if(view.yMax > baseDomain.yMax){ view.yMin -= (view.yMax - baseDomain.yMax); view.yMax = baseDomain.yMax; }
+  // ensure min window
+  if((view.xMax - view.xMin) < minWidth) view.xMax = view.xMin + minWidth;
+  if((view.yMax - view.yMin) < minHeight) view.yMax = view.yMin + minHeight;
+}
+function drawChart(){
+  const ctx = chart.getContext('2d');
+  const rect = chart.getBoundingClientRect();
+  const W = chart.width, H = chart.height;
+  ctx.clearRect(0,0,W,H);
+
+  const id = $('#chartSeries').value;
+  const data = getDataForChart();
+  if(!data){ ctx.fillStyle='#9fb3d9'; ctx.font='14px Inter'; ctx.fillText('Run the dashboard first.', 16, 24); return; }
+
+  const x = t => 48 + ( (t - view.xMin) / (view.xMax - view.xMin) ) * (W-64);
+  const y = v => 16 + (1 - ( (v - view.yMin) / (view.yMax - view.yMin) )) * (H-48);
 
   // axes
+  const padL=48, padB=30;
   ctx.strokeStyle='#213147'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t+H); ctx.lineTo(pad.l+W, pad.t+H); ctx.stroke();
-
-  // gridlines
+  ctx.beginPath(); ctx.moveTo(padL,16); ctx.lineTo(padL,H-padB); ctx.lineTo(W-16,H-padB); ctx.stroke();
+  // grid
   ctx.strokeStyle='#1a2536';
   for(let i=1;i<5;i++){
-    const yy = pad.t + i*H/5;
-    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(pad.l+W, yy); ctx.stroke();
+    const yy = 16 + i*(H-48)/5;
+    ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W-16, yy); ctx.stroke();
   }
 
-  // line
+  // series line
   ctx.strokeStyle='#6aa3ff'; ctx.lineWidth=2;
   ctx.beginPath();
-  data.forEach((d,i)=>{ const xi=x(new Date(d.date).getTime()), yi=y(d.value); i?ctx.lineTo(xi,yi):ctx.moveTo(xi,yi); });
+  data.forEach((d,i)=>{
+    const xi=x(new Date(d.date).getTime()), yi=y(d.value);
+    if(i===0) ctx.moveTo(xi,yi); else ctx.lineTo(xi,yi);
+  });
   ctx.stroke();
 
-  // last point + label
+  // last point label
   const last = data[data.length-1];
   const lx=x(new Date(last.date).getTime()), ly=y(last.value);
   ctx.fillStyle='#6aa3ff'; ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#bcd2ff'; ctx.font='12px Inter';
-  ctx.fillText(`${id}: ${typeof last.value==='number' ? (Math.abs(last.value)>=1000?Math.round(last.value).toLocaleString():last.value.toFixed(2)) : last.value} (${last.date})`, pad.l+8, pad.t+16);
+  const valStr = (Math.abs(last.value)>=1000? Math.round(last.value).toLocaleString(): last.value.toFixed(2));
+  ctx.fillText(`${id}: ${valStr} (${last.date})`, padL+8, 28);
 }
-$('#refreshChart').addEventListener('click', drawChartFromCache);
-$('#chartSeries').addEventListener('change', drawChartFromCache);
+
+/* Gesture helpers */
+function getTouches(ev){
+  const arr = [];
+  for(const t of ev.touches) arr.push({id:t.identifier, x:t.clientX, y:t.clientY});
+  return arr;
+}
+let lastGesture = null; // {type:'pan'|'pinch', cx, cy, dist, angle, viewSnap}
+function distance(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
+function midpoint(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+
+chart.addEventListener('touchstart', (ev)=>{
+  ev.preventDefault();
+  const ts = getTouches(ev);
+  if(ts.length===1){
+    lastGesture = {type:'pan', start:ts[0], viewSnap:{...view}};
+  } else if(ts.length>=2){
+    const a=ts[0], b=ts[1], mid=midpoint(a,b);
+    const dist=distance(a,b);
+    lastGesture = {type:'pinch', cx:mid.x, cy:mid.y, dist, viewSnap:{...view}};
+  }
+}, {passive:false});
+
+chart.addEventListener('touchmove', (ev)=>{
+  ev.preventDefault();
+  if(!baseDomain || !lastGesture) return;
+  const ts = getTouches(ev);
+  const W = chart.clientWidth, H = chart.clientHeight;
+
+  if(lastGesture.type==='pan' && ts.length===1){
+    // pan in data space based on finger delta
+    const dx = ts[0].x - lastGesture.start.x;
+    const dy = ts[0].y - lastGesture.start.y;
+    const xRange = lastGesture.viewSnap.xMax - lastGesture.viewSnap.xMin;
+    const yRange = lastGesture.viewSnap.yMax - lastGesture.viewSnap.yMin;
+    const xShift = -dx / (W-64) * xRange;
+    const yShift =  dy / (H-48) * yRange;
+    view.xMin = lastGesture.viewSnap.xMin + xShift;
+    view.xMax = lastGesture.viewSnap.xMax + xShift;
+    view.yMin = lastGesture.viewSnap.yMin + yShift;
+    view.yMax = lastGesture.viewSnap.yMax + yShift;
+    clampView();
+    drawChart();
+  }
+  if(lastGesture.type==='pinch' && ts.length>=2){
+    const a=ts[0], b=ts[1];
+    const d = distance(a,b);
+    const scale = d / (lastGesture.dist || d);
+
+    // zoom towards gesture center (X & Y)
+    const rect = chart.getBoundingClientRect();
+    const cx = ( (lastGesture.cx - rect.left - 48) / (chart.clientWidth - 64) ); // 0..1
+    const cy = ( (lastGesture.cy - rect.top  - 16) / (chart.clientHeight - 48) ); // 0..1
+
+    const xRange = lastGesture.viewSnap.xMax - lastGesture.viewSnap.xMin;
+    const yRange = lastGesture.viewSnap.yMax - lastGesture.viewSnap.yMin;
+
+    const newXRange = xRange / scale;
+    const newYRange = yRange / scale;
+
+    const xCenter = lastGesture.viewSnap.xMin + xRange*cx;
+    const yCenter = lastGesture.viewSnap.yMin + yRange*(1-cy);
+
+    view.xMin = xCenter - newXRange*cx;
+    view.xMax = xCenter + newXRange*(1-cx);
+    view.yMin = yCenter - newYRange*(1-cy);
+    view.yMax = yCenter + newYRange*cy;
+    clampView();
+    drawChart();
+  }
+}, {passive:false});
+
+chart.addEventListener('touchend', (ev)=>{ ev.preventDefault(); lastGesture=null; }, {passive:false});
+chart.addEventListener('touchcancel', (ev)=>{ ev.preventDefault(); lastGesture=null; }, {passive:false});
+chart.addEventListener('dblclick', ()=>{ baseDomain=null; drawChart(); }); // reset
+
+$('#refreshChart').addEventListener('click', ()=>{ baseDomain=null; drawChart(); });
+$('#chartSeries').addEventListener('change', ()=>{ baseDomain=null; drawChart(); });
 
 /* ================= BOOT ================= */
+function updateHistory(){
+  const histWrap = $('#historyBox'); const btn = $('#toggleHist'); const count = $('#histCount');
+  const hist = JSON.parse(localStorage.getItem('CRC_HISTORY')||'[]');
+  count.textContent = hist.length ? `(${hist.length} saved)` : '(no history yet)';
+  histWrap.innerHTML = hist.map(h=>`
+    <div class="card" style="margin-top:8px">
+      <div class="miniMeta">${h.ts} • CRC ${h.crc} • ${h.mode}</div>
+      <div style="white-space:pre-wrap;margin-top:8px">${h.text}</div>
+    </div>`).join('');
+}
 (function init(){
   const saved = localStorage.getItem('FRED_KEY'); if(saved) $('#apiKey').value = saved;
   $('#runBtn').addEventListener('click', run);
   $('#weightMode').addEventListener('change', e=>{
     const show = e.target.value==='custom';
     $('#customBox').classList.toggle('hidden', !show);
+  });
+  $('#toggleHist').addEventListener('click', ()=>{
+    $('#historyBox').classList.toggle('hidden');
+    $('#toggleHist').textContent = $('#historyBox').classList.contains('hidden') ? '📜 Show History' : '📕 Hide History';
   });
   updateHistory();
 })();
