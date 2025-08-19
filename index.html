@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Marshall WBCI — World’s Best Crash Indicator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Marshall WBCI — World’s Best Crash Indicator (v1.0)</title>
 <style>
 :root{
   --bg:#0d1722; --panel:#0f1b27; --card:#102133; --edge:#1b2c3d;
   --text:#eaf0f6; --muted:#a8b6c6; --blue:#3a83ff;
   --green:#2ecc71; --amber:#f4b740; --red:#ff5565;
-  --grid:#273244; --accent:#8ab6ff; --accentFill:rgba(138,182,255,.18);
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:500 16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
@@ -49,7 +48,11 @@ button:disabled{opacity:.6;cursor:not-allowed}
 ul.clean{margin:0 0 0 18px;padding:0;display:grid;gap:6px}
 .err{background:#3b1b23;border:1px solid #5a2a37;color:#ffd7de;padding:10px 12px;border-radius:12px;margin-top:10px}
 
-.chart-wrap{position:relative;height:180px;margin:8px 0}
+.spark{width:100%;height:86px;margin:8px 0 2px;border:1px solid var(--edge);border-radius:10px;background:#0b1620}
+.axis{stroke:#223041;stroke-width:1}
+.path{fill:none;stroke-width:2.2}
+.tick{font-size:10px;fill:#7f91a6}
+
 footer{margin:18px 0 12px;text-align:center;color:#7f91a6;font-size:13px}
 </style>
 </head>
@@ -59,9 +62,9 @@ footer{margin:18px 0 12px;text-align:center;color:#7f91a6;font-size:13px}
 
   <div class="panel">
     <div class="row">
-      <input id="fredKey" type="text" placeholder="FRED API key (saved locally)"/>
+      <input id="apiKey" type="text" placeholder="FRED API key (saved locally)"/>
       <select id="mode">
-        <option value="advanced">Advanced (predictive tilt + sync/shock)</option>
+        <option value="advanced">Advanced (predictive tilt + synchronicity)</option>
         <option value="simple">Simple (equal weights)</option>
       </select>
       <button id="runBtn">Run / Refresh</button>
@@ -88,7 +91,7 @@ footer{margin:18px 0 12px;text-align:center;color:#7f91a6;font-size:13px}
 
   <div class="panel">
     <h2>Executive Summary</h2>
-    <div id="execBody" class="muted">Run to generate a live CIO‑style note.</div>
+    <div id="execBody" class="muted">Run to generate a live note driven by current category scores and changes.</div>
   </div>
 
   <div class="panel">
@@ -96,130 +99,169 @@ footer{margin:18px 0 12px;text-align:center;color:#7f91a6;font-size:13px}
     <div id="cards" class="grid cols-2 cols-3"></div>
   </div>
 
-  <footer>Marshall WBCI • Built on public FRED data</footer>
+  <footer>Marshall WBCI v1.0 • Built on public FRED data</footer>
 </div>
 
-<!-- libs -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0"></script>
-
 <script>
-/* ====================== Config ====================== */
-const CATS = [
-  { id:'rates',    name:'Rates / Curve',      why:'Tight/inverted curves + high long rates raise crash risk via refinancing & valuation pressure.' },
-  { id:'credit',   name:'Credit / Stress',    why:'Credit spreads & systemic stress typically lead equity drawdowns.' },
-  { id:'liquidity',name:'Liquidity',          why:'When market depth falters, sell‑offs accelerate.' },
-  { id:'usd',      name:'USD / External',     why:'Strong USD tightens global conditions and can trigger funding squeezes.' },
-  { id:'energy',   name:'Energy Shock',       why:'Energy burden spikes often precede recessions and earnings downgrades.' },
-  { id:'house',    name:'Labor / Household',  why:'Rising claims & delinquencies erode the demand buffer.' },
-  { id:'act',      name:'Activity / Sentiment', why:'Softening activity/confidence increases vulnerability to shocks.' }
-];
-// FRED series per category (public, stable)
-const SERIES = {
-  rates:   ['DGS10','T10Y2Y','T10Y3M'],
-  credit:  ['BAMLH0A0HYM2','STLFSI4','NFCI'],
-  liquidity:['SOFR','RRPONTSYD'],             // SOFR (since 2018), ON RRP as proxy for money conditions
-  usd:     ['DTWEXBGS'],
-  energy:  ['DCOILWTICO','DHHNGSP'],
-  house:   ['UNRATE','ICSA','W875RX1'],       // real income ex‑transfers (invert)
-  act:     ['INDPRO','TCU','RSAFS','PERMIT','UMCSENT']
-};
-// Invert where “higher = safer/stronger” so score always means “higher = riskier”
-const INVERT = new Set(['INDPRO','TCU','RSAFS','PERMIT','UMCSENT','W875RX1']);
-
-/* ====================== Helpers ====================== */
+/* ================= Utils ================= */
 const $ = s=>document.querySelector(s);
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const mean=a=>a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;
-const stdev=a=>{ if(a.length<2) return 1; const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))))||1; };
-function band(score){ if(score==null) return {name:'—', color:'#445', cls:''};
-  if(score<40) return {name:'Green', color:'var(--green)', cls:'v-green'};
-  if(score<=70) return {name:'Amber', color:'var(--amber)', cls:'v-amber'};
-  return {name:'Red', color:'var(--red)', cls:'v-red'};}
-function monthKey(d){ return d.toISOString().slice(0,7); }
-function resampleMonthly(obs){ const map=new Map(); for(const o of obs){ map.set(monthKey(o.date), o); } return [...map.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(e=>({date:new Date(e[0]+'-01'), value:e[1].value})); }
-function percentileRank(values, x){ const arr=values.filter(Number.isFinite).slice().sort((a,b)=>a-b); if(!arr.length||!Number.isFinite(x)) return null;
-  let lo=0,hi=arr.length; while(lo<hi){const m=(lo+hi>>1); if(arr[m]<=x) lo=m+1; else hi=m;} return Math.round(100*lo/arr.length); }
-
-/* ====================== FRED fetch (parallel + proxy) ====================== */
+const startISO = ()=>{const d=new Date();d.setFullYear(d.getFullYear()-10);return d.toISOString().slice(0,10);};
 const proxies=[u=>u,u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)];
-function fredURL(series, key, start){ const u=new URL('https://api.stlouisfed.org/fred/series/observations'); u.searchParams.set('series_id',series); u.searchParams.set('api_key',key); u.searchParams.set('file_type','json'); u.searchParams.set('observation_start',start); u.searchParams.set('_t',Date.now()); return u.toString(); }
-function timeout(ms,p){ return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]); }
-async function getSeries(series, key, startISO){
-  const url = fredURL(series, key, startISO);
-  let lastErr=null;
-  for(const wrap of proxies){
-    try{
-      const r = await timeout(9000, fetch(wrap(url),{mode:'cors',cache:'no-store'}));
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const j = await r.json();
-      const obs = (j.observations||[]).map(o=>({date:new Date(o.date), value: o.value==='.'? null : +o.value})).filter(x=>x.value!=null);
-      return obs;
-    }catch(e){ lastErr=e; }
-  }
-  throw lastErr||new Error('fetch failed '+series);
+function timeout(ms,p){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);}
+async function jsonWithProxies(url){let last;for(const wrap of proxies){try{const r=await timeout(9000,fetch(wrap(url),{mode:'cors',cache:'no-store'}));if(!r.ok) throw new Error('HTTP '+r.status);return await r.json();}catch(e){ last=e; }}throw last||new Error('fetch failed');}
+function fredURL(path,params){const u=new URL('fred/'+path,'https://api.stlouisfed.org/');for(const[k,v] of Object.entries(params))u.searchParams.set(k,v);u.searchParams.set('_t',Date.now());return u.toString();}
+function percentileRank(values, x){const arr=values.filter(v=>Number.isFinite(v)).slice().sort((a,b)=>a-b);if(!arr.length||!Number.isFinite(x))return null;let lo=0,hi=arr.length;while(lo<hi){const m=(lo+hi>>1);if(arr[m]<=x)lo=m+1;else hi=m;}return Math.round(100*lo/arr.length);}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function mean(a){return a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;}
+function stdev(a){if(a.length<2) return 1;const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))))||1;}
+function band(score){if(score==null) return {name:'—', color:'#445', cls:''};if(score<40)return{name:'Green', color:'var(--green)', cls:'v-green'};if(score<=70)return{name:'Amber', color:'var(--amber)', cls:'v-amber'};return{name:'Red', color:'var(--red)', cls:'v-red'};}
+
+/* ================= Categories & series (FRED) ================= */
+const CATS = [
+  { id:'rates',    name:'Rates / Curve',      why:'Tight or inverted curves + high long rates raise crash risk via refinancing and valuation pressure.' },
+  { id:'credit',   name:'Credit / Stress',    why:'Credit spreads and systemic stress tend to lead equity drawdowns.' },
+  { id:'liquidity',name:'Liquidity',          why:'When bond market depth and money conditions falter, sell‑offs accelerate.' },
+  { id:'usd',      name:'USD / External',     why:'A strong USD tightens global financial conditions and can trigger funding squeezes.' },
+  { id:'energy',   name:'Energy Shock',       why:'Energy burden spikes often precede recessions and earnings downgrades.' },
+  { id:'house',    name:'Labor / Household',  why:'Rising claims and household delinquencies erode the demand buffer.' },
+  { id:'act',      name:'Activity / Sentiment', why:'Softening real activity and confidence raise vulnerability to shocks.' }
+];
+
+const SERIES = [
+  // Rates / Curve
+  {id:'DGS10',    cat:'rates', name:'10y Treasury yield', code:'DGS10',      fmt:'pct',  invert:false},
+  {id:'T10Y2Y',   cat:'rates', name:'10y–2y spread',      code:'T10Y2Y',     fmt:'pct',  invert:true},
+  {id:'T10Y3M',   cat:'rates', name:'10y–3m spread',      code:'T10Y3M',     fmt:'pct',  invert:true},
+
+  // Credit / Stress
+  {id:'HY_OAS',   cat:'credit',name:'HY OAS',             code:'BAMLH0A0HYM2',fmt:'pct', invert:false},
+  {id:'STLFSI4',  cat:'credit',name:'St. Louis FSI v4',   code:'STLFSI4',    fmt:'lev',  invert:false},
+  {id:'NFCI',     cat:'credit',name:'Chicago Fed NFCI',   code:'NFCI',       fmt:'lev',  invert:false},
+
+  // Liquidity
+  {id:'UST_RVOL', cat:'liquidity', name:'UST realized vol (proxy)', code:'__SYNTH_RVOL__', fmt:'lev', invert:false},
+  {id:'WALCL',    cat:'liquidity', name:'Fed balance sheet (assets)', code:'WALCL',     fmt:'num',  invert:true},
+
+  // USD / External
+  {id:'DTWEXBGS', cat:'usd',   name:'Broad trade-weighted USD', code:'DTWEXBGS', fmt:'lev', invert:false},
+
+  // Energy
+  {id:'WTI',      cat:'energy',name:'WTI crude oil',       code:'DCOILWTICO', fmt:'lev', invert:false},
+  {id:'NATGAS',   cat:'energy',name:'Henry Hub gas',       code:'DHHNGSP',    fmt:'lev', invert:false},
+
+  // Labor / Household
+  {id:'ICSA',     cat:'house', name:'Initial jobless claims', code:'ICSA',    fmt:'num',  invert:false},
+  {id:'UNRATE',   cat:'house', name:'Unemployment rate',      code:'UNRATE',  fmt:'pct',  invert:false},
+  {id:'W875RX1',  cat:'house', name:'Real income ex-transfers',   code:'W875RX1',   fmt:'lev', invert:true},
+
+  // Activity / Sentiment
+  {id:'INDPRO',   cat:'act',   name:'Industrial production', code:'INDPRO',  fmt:'lev',  invert:true},
+  {id:'TCU',      cat:'act',   name:'Capacity utilization',  code:'TCU',     fmt:'lev',  invert:true},
+  {id:'RSAFS',    cat:'act',   name:'Retail sales (advance)',code:'RSAFS',   fmt:'num',  invert:true},
+  {id:'PERMIT',   cat:'act',   name:'Building permits',      code:'PERMIT',  fmt:'num',  invert:true},
+  {id:'UMCSENT',  cat:'act',   name:'UMich consumer sentiment', code:'UMCSENT', fmt:'lev', invert:true},
+];
+
+function fmtVal(meta,v){
+  if(!Number.isFinite(v)) return '—';
+  if(meta.fmt==='pct') return (+v).toFixed(2)+'%';
+  if(meta.fmt==='num') return Number(v).toLocaleString();
+  if(meta.fmt==='lev') return (Math.abs(v)>=1000?Number(v).toLocaleString():(+v.toFixed(4))).toString();
+  return v;
 }
 
-/* ====================== Scoring & enhancers ====================== */
-function scoreSeries(obs, invert){
-  const vals = obs.map(o=>o.value);
+/* ================= FRED ================= */
+function fredObs(series_id, apiKey, start){
+  const url = fredURL('series/observations',{series_id, api_key:apiKey, file_type:'json', observation_start:start});
+  return jsonWithProxies(url).then(j=>{
+    const obs=(j.observations||[]).filter(o=>o.value!=='.').map(o=>({t:o.date, v:+o.value}));
+    return obs;
+  });
+}
+
+/* synth UST realized vol from daily DGS10 */
+function makeUSTRealizedVol(dgs10Daily){
+  if(!dgs10Daily.length) return [];
+  // daily |Δy| 10‑day rolling sum → monthly last value
+  const absD=[]; for(let i=1;i<dgs10Daily.length;i++) absD.push({t:dgs10Daily[i].t, v:Math.abs(dgs10Daily[i].v-dgs10Daily[i-1].v)});
+  const roll=[]; let acc=0; const W=10;
+  for(let i=0;i<absD.length;i++){ acc+=absD[i].v; if(i>=W) acc-=absD[i-W].v; if(i>=W-1) roll.push({t:absD[i].t,v:acc}); }
+  return resampleMonthly(roll);
+}
+
+function resampleMonthly(history){
+  const map=new Map();
+  for(const o of history){ const ym=o.t.slice(0,7); map.set(ym,o); }
+  return [...map.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(e=>({t:e[0]+'-01', v:e[1].v}));
+}
+
+function scoreFromHistory(meta, history){
+  if(!history.length) return null;
+  const vals = history.map(h=>h.v);
   const latest = vals.at(-1);
-  let p = percentileRank(vals, latest);
+  const p = percentileRank(vals, latest);
   if(p==null) return null;
-  if(invert) p = 100 - p;
-  return clamp(p,0,100);
+  return clamp(meta.invert ? 100-p : p, 0, 100);
 }
-function buildCategoryScores(raw){
-  // raw: { seriesId: monthlyObs[] }
-  const catScore={}, catMonthly={};
-  for(const c of CATS){
-    const ids = SERIES[c.id];
-    const percs=[], alignedLen=[];
-    const monthlySeries = [];
-    for(const sid of ids){
-      const m = raw[sid]||[];
-      if(!m.length) continue;
-      const s = scoreSeries(m, INVERT.has(sid));
-      if(s!=null) percs.push(s);
-      // keep last 24 months for plots
-      monthlySeries.push(m.slice(-24));
-      alignedLen.push(monthlySeries.at(-1).length);
-    }
-    catScore[c.id] = percs.length? Math.round(mean(percs)) : null;
 
-    // merge to single spark (avg) by index
-    const len = alignedLen.length? Math.min(...alignedLen) : 0;
+/* ============== Build monthly series & scores ============== */
+async function loadAll(apiKey){
+  const start = startISO();
+  // fetch all needed raw series
+  const ids = [...new Set(SERIES.filter(s=>s.code!=='__SYNTH_RVOL__').map(s=>s.code))];
+  const jobs = ids.map(id => fredObs(id, apiKey, start).then(r=>({id,data:r})).catch(e=>({id,error:e})));
+  const out = await Promise.all(jobs);
+  const daily = Object.fromEntries(out.filter(x=>x.data).map(x=>[x.id,x.data]));
+  const monthly = {};
+  // resample to monthly
+  for(const id of Object.keys(daily)){ monthly[id] = resampleMonthly(daily[id]); }
+  // synth UST realized vol
+  const rv = makeUSTRealizedVol(daily['DGS10']||[]);
+  monthly['__SYNTH_RVOL__'] = rv;
+  const fails = out.filter(x=>x.error || !x.data?.length).map(x=>x.id);
+  return {monthly, fails};
+}
+
+function buildScores(monthly){
+  // per series score
+  const sScores = {};
+  for(const s of SERIES){
+    const hist = monthly[s.code] || [];
+    const score = scoreFromHistory(s, hist);
+    sScores[s.id] = {score, history: hist};
+  }
+  // per category score (avg of available series scores)
+  const cScores = {};
+  for(const c of CATS){
+    const ids = SERIES.filter(x=>x.cat===c.id).map(x=>x.id);
+    const xs = ids.map(id=>sScores[id].score).filter(v=>v!=null);
+    cScores[c.id] = xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length) : null;
+  }
+  // monthly category series for enhancers/spark
+  const catMonthly = {};
+  for(const c of CATS){
+    const ids = SERIES.filter(x=>x.cat===c.id).map(x=>x.id);
+    const arrs = ids.map(id=>sScores[id].history).filter(a=>a?.length);
+    const len = arrs.length? Math.min(...arrs.map(a=>a.length)) : 0;
     const merged=[];
     for(let i=0;i<len;i++){
-      const avg = mean(monthlySeries.map(arr=>arr[arr.length-len+i].value));
-      const d   = monthlySeries[0][monthlySeries[0].length-len+i].date;
-      merged.push({date:d, value:avg});
+      const avg = arrs.reduce((acc,a)=>acc + a[a.length-len+i].v,0)/arrs.length;
+      const t   = arrs[0][arrs[0].length-len+i].t;
+      merged.push({t, v:avg});
     }
-    catMonthly[c.id]=merged;
+    catMonthly[c.id] = merged.slice(-24);
   }
-  return {catScore, catMonthly};
+  return {seriesScores:sScores, catScores:cScores, catMonthly};
 }
-function computeBreadth(catScore){ const xs=Object.values(catScore).filter(v=>v!=null); if(!xs.length) return 0; return xs.filter(v=>v>=70).length/xs.length; }
-function computeBase(catScore, mode){
-  const w = (id)=>({credit:1.4, rates:1.3, liquidity:1.2, house:1.1, usd:1.0, energy:1.0, act:0.9}[id]||1);
-  const items = Object.entries(catScore).filter(([_,v])=>v!=null);
-  if(!items.length) return null;
-  if(mode==='simple') return Math.round(mean(items.map(([_,v])=>v)));
-  const W = items.reduce((a,[k,v])=>a+w(k),0);
-  return Math.round(items.reduce((a,[k,v])=>a+w(k)*v,0)/W);
-}
-// monthly category series → synchronicity & shock
-function computeSync(catMonthly, catScore){
-  const actives = Object.keys(catMonthly).filter(k=> (catScore[k]??0)>=60);
+
+/* ============== Enhancers & composite ============== */
+function computeBreadth(catScores){ const xs=Object.values(catScores).filter(v=>v!=null); if(!xs.length) return 0; return xs.filter(v=>v>=70).length/xs.length; }
+function computeSync(catMonthly, catScores){
+  const actives = Object.keys(catMonthly).filter(k=> (catScores[k]??0)>=60);
   if(actives.length<2) return 0;
-  // align on common dates
-  const dates = [...new Set(actives.flatMap(k=>catMonthly[k].map(p=>p.date.getTime())))].sort((a,b)=>a-b);
-  const rows = actives.map(k=>{
-    const map = new Map(catMonthly[k].map(p=>[p.date.getTime(),p.value]));
-    return dates.map(t=> map.get(t) ?? null);
-  });
-  const keep = []; for(let i=0;i<dates.length;i++){ if(rows.every(r=>r[i]!=null)) keep.push(i); }
+  const months = [...new Set(actives.flatMap(k=>catMonthly[k].map(p=>p.t)))].sort();
+  const rows = actives.map(k=>{ const m=new Map(catMonthly[k].map(p=>[p.t,p.v])); return months.map(t=> m.get(t) ?? null); });
+  const keep = []; for(let i=0;i<months.length;i++){ if(rows.every(r=>r[i]!=null)) keep.push(i); }
   if(keep.length<6) return 0;
   const A = rows.map(r=> keep.map(i=>r[i]));
   const cors=[];
@@ -232,11 +274,10 @@ function computeSync(catMonthly, catScore){
   return clamp(mean(cors),0,1);
 }
 function computeShock(catMonthly){
-  // 3m delta z-score, positives only, averaged and scaled to 0..100
   const zs=[];
   for(const arr of Object.values(catMonthly)){
     if(arr.length<6) continue;
-    const vals=arr.map(p=>p.value);
+    const vals=arr.map(p=>p.v);
     const deltas=[]; for(let i=3;i<vals.length;i++) deltas.push(vals[i]-vals[i-3]);
     if(deltas.length<3) continue;
     const mu=mean(deltas), sd=stdev(deltas);
@@ -246,33 +287,42 @@ function computeShock(catMonthly){
   const z=zs.length? mean(zs):0;
   return clamp(Math.round((z/2.5)*100),0,100);
 }
-function computeWBCI(base,sync,breadth,shock){ if(base==null) return null; const x = base*(1+0.4*sync+0.25*breadth)+0.25*shock; return clamp(Math.round(x),0,100); }
+function computeBase(catScores, mode){
+  const w = (id)=>({credit:1.4, rates:1.3, liquidity:1.2, house:1.1, usd:1.0, energy:1.0, act:0.9}[id]||1);
+  const items = Object.entries(catScores).filter(([_,v])=>v!=null);
+  if(!items.length) return null;
+  if(mode==='simple') return Math.round(mean(items.map(([_,v])=>v)));
+  const W = items.reduce((a,[k])=>a+w(k),0);
+  return Math.round(items.reduce((a,[k,v])=>a+w(k)*v,0)/W);
+}
+function computeWBCI(base, sync, breadth, shock){ if(base==null) return null; return clamp(Math.round(base*(1+0.4*sync+0.25*breadth)+0.25*shock),0,100); }
 
-/* ====================== Charts ====================== */
-function makeSpark(canvas, data, color){
-  const ctx = canvas.getContext('2d');
-  const labels = data.map(p=>p.date);
-  const values = data.map(p=>p.value);
-  return new Chart(ctx,{
-    type:'line',
-    data:{ labels, datasets:[{ data:values, borderColor:color, backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--accentFill').trim(), fill:true, tension:.25, pointRadius:0, borderWidth:2 }]},
-    options:{
-      responsive:true, maintainAspectRatio:false, parsing:false, normalized:true,
-      scales:{
-        x:{ type:'time', grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'var(--muted)', maxTicksLimit:4}},
-        y:{ grid:{color:'rgba(255,255,255,.06)'}, ticks:{color:'var(--muted)', maxTicksLimit:4}}
-      },
-      plugins:{
-        legend:{display:false},
-        tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(15,23,42,.92)',titleColor:'#cbd5e1',bodyColor:'#e5e7eb',
-                 callbacks:{ label:(ctx)=> ctx.parsed.y!=null? ctx.parsed.y.toFixed(2):'—' } },
-        zoom:{ zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}, pan:{enabled:true,mode:'x'} }
-      }
-    }
-  });
+/* ============== SVG sparklines ============== */
+function sparklineSVG(history, color){
+  if(!history?.length) return '';
+  const cut = history.slice(-24); // months
+  const xs = cut.map((d,i)=>i), vs = cut.map(d=>d.v);
+  const w=360,h=86,pad=8;
+  const min=Math.min(...vs), max=Math.max(...vs);
+  const y = v => max===min ? h/2 : h - ((v-min)/(max-min))*h;
+  const x = i => (i/(xs.length-1||1))*w;
+  let d=''; cut.forEach((pt,i)=>{ d += (i?'L':'M') + x(i)+','+y(pt.v)+' '; });
+  const col = color||'#8ab6ff';
+  return `
+  <svg class="spark" viewBox="0 0 ${w+pad*2} ${h+pad*2}" preserveAspectRatio="none">
+    <g transform="translate(${pad},${pad})">
+      <line class="axis" x1="0" y1="${h}" x2="${w}" y2="${h}"></line>
+      <line class="axis" x1="0" y1="0" x2="0" y2="${h}"></line>
+      <path class="path" stroke="${col}" d="${d}"></path>
+      <text class="tick" x="2" y="${h-4}">${cut[0].t.slice(0,7)}</text>
+      <text class="tick" x="${w-46}" y="${h-4}">${cut[cut.length-1].t.slice(0,7)}</text>
+      <text class="tick" x="2" y="10">${max.toFixed(0)}</text>
+      <text class="tick" x="2" y="${h-20}">${min.toFixed(0)}</text>
+    </g>
+  </svg>`;
 }
 
-/* ====================== UI ====================== */
+/* ============== UI paint ============== */
 function paintGauge(x){
   $('#wcbiNum').textContent = x==null?'--':x;
   const b = band(x);
@@ -280,32 +330,25 @@ function paintGauge(x){
   document.querySelector('.gauge').style.background = `conic-gradient(${b.color} 0 ${deg}deg,#223041 ${deg}deg 360deg)`;
   $('#bandChip').textContent = `Band: ${b.name}`;
 }
-function renderCards(catScore, catMonthly){
+function renderCards(catScores, catMonthly){
   const wrap=$('#cards'); wrap.innerHTML='';
   for(const c of CATS){
-    const s = catScore[c.id];
+    const s = catScores[c.id];
     const b = band(s);
     const div=document.createElement('div'); div.className='card';
-    div.innerHTML=`
+    div.innerHTML = `
       <div class="vline ${b.cls}"></div>
-      <div class="kv">
-        <div class="series">${c.name}</div>
-        <div class="badge" style="background:#152234;border-color:#223345">${s==null?'—':s}</div>
-      </div>
-      <div class="chart-wrap"><canvas id="spark_${c.id}"></canvas></div>
+      <div class="kv"><div class="series">${c.name}</div><div class="badge" style="background:#152234;border-color:#223345">${s==null?'—':s}</div></div>
+      ${sparklineSVG(catMonthly[c.id]||[], b.color)}
       <div class="bandbar"></div>
       <div class="explain"><b>Baseline:</b> ${b.name}. <span class="muted">${c.why}</span></div>
     `;
     wrap.appendChild(div);
-    const data = catMonthly[c.id]||[];
-    if(data.length){
-      makeSpark(div.querySelector('canvas'), data, b.color);
-    }
   }
 }
-function writeExecNoteSimple(base, breadth, sync, shock, catScore){
+function writeExecNoteSimple(base, breadth, sync, shock, catScores){
   const bandName = band(base||0).name;
-  const cats = Object.entries(catScore).filter(([_,v])=>v!=null).sort((a,b)=>b[1]-a[1]);
+  const cats = Object.entries(catScores).filter(([_,v])=>v!=null).sort((a,b)=>b[1]-a[1]);
   const top = cats.slice(0,3).map(([k,v])=>`${CATS.find(x=>x.id===k).name} ${v} (${band(v).name})`);
   const low = cats.slice(-2).map(([k,v])=>`${CATS.find(x=>x.id===k).name} ${v} (${band(v).name})`);
   const breadthNote = breadth>0.5 ? 'Risk is broad.' : breadth>0.2 ? 'Risk is spreading.' : 'Risk is concentrated.';
@@ -313,71 +356,67 @@ function writeExecNoteSimple(base, breadth, sync, shock, catScore){
   const shockNote = shock>60 ? 'Conditions have worsened quickly.' : shock>30 ? 'Momentum is turning.' : 'Changes are gradual.';
   const stance = (()=> {
     if(base>=70 || (breadth>0.4 && sync>0.5)) return 'Defensive: raise cash quality, shorten duration, add crash hedges.';
-    if(base>=50) return 'Cautious: run tighter risk, favor quality balance sheets, keep selective hedges.';
+    if(base>=50) return 'Cautious: run tighter risk, prefer quality balance sheets, keep selective hedges.';
     return 'Constructive but alert: use dips selectively; keep light hedges; watch the triggers.';
   })();
   const bullets = [
     `<b>Today’s take:</b> Base ${base==null?'—':base} — <b>${bandName}</b>. Breadth ${Math.round(breadth*100)}%, Synchronicity ${Math.round(sync*100)}%, Shock ${shock}.`,
     `<b>What this means:</b> ${breadthNote} ${syncNote} ${shockNote}`,
     `<b>What’s driving it:</b> ${top.join('; ')}${low.length?`. Offsets: ${low.join('; ')}`:''}.`,
-    `<b>Watch next:</b> (1) front‑anchored curve steepening, (2) clear HY OAS/systemic‑stress widening, (3) persistent rise in weekly claims.`,
+    `<b>Watch next:</b> (1) front‑anchored curve steepening, (2) clear HY OAS/systemic‑stress widening, (3) a persistent rise in weekly claims.`,
     `<b>Portfolio stance:</b> ${stance}`
   ];
   $('#execBody').innerHTML = `<ul class="clean">${bullets.map(x=>`<li>${x}</li>`).join('')}</ul>`;
 }
 
-/* ====================== Run ====================== */
-function loadKey(){ const k=localStorage.getItem('fred_key'); if(k) $('#fredKey').value=k; }
-function saveKey(){ const k=$('#fredKey').value.trim(); if(k) localStorage.setItem('fred_key',k); }
-function startISO(){ const d=new Date(); d.setFullYear(d.getFullYear()-10); return d.toISOString().slice(0,10); }
+/* ============== Runner ============== */
+function saveKey(){ const k=$('#apiKey').value.trim(); if(k) localStorage.setItem('fred_key',k); }
+function loadKey(){ const k=localStorage.getItem('fred_key'); if(k) $('#apiKey').value=k; }
 
 async function run(){
   $('#topErr').style.display='none'; $('#topErr').textContent='';
-  const key=$('#fredKey').value.trim(); if(!key) { alert('Enter your FRED API key'); return; }
-  saveKey();
+  const key=$('#apiKey').value.trim(); if(!key) return alert('Enter FRED API key'); saveKey();
   $('#runBtn').disabled=true; $('#runBtn').textContent='Running…';
 
-  const start = startISO();
-  // 1) Pull all series in parallel, resample monthly immediately (for speed/memory)
-  const allIds = [...new Set(Object.values(SERIES).flat())];
-  const jobs = allIds.map(id => getSeries(id, key, start)
-    .then(obs => ({id, data: resampleMonthly(obs)}))
-    .catch(err => ({id, error: err})));
-  const settled = await Promise.all(jobs);
+  try{
+    // 1) fetch & monthlyize
+    const {monthly, fails} = await loadAll(key);
 
-  const raw={}; const fails=[];
-  for(const r of settled){
-    if(r.error || !r.data?.length){ fails.push(r.id); continue; }
-    raw[r.id]=r.data;
-  }
+    // 2) build scores
+    const built = buildScores(monthly);
+    const catScores  = built.catScores;
+    const catMonthly = built.catMonthly;
 
-  // 2) Build category scores & monthly series
-  const {catScore, catMonthly} = buildCategoryScores(raw);
+    // 3) enhancers
+    const breadth = computeBreadth(catScores);
+    const sync    = computeSync(catMonthly, catScores);
+    const shock   = computeShock(catMonthly);
 
-  // 3) Enhancers
-  const breadth = computeBreadth(catScore);
-  const sync    = computeSync(catMonthly, catScore);
-  const shock   = computeShock(catMonthly);
+    // 4) base + final
+    const mode = $('#mode').value;
+    const base = computeBase(catScores, mode);
+    const WBCI = computeWBCI(base, sync, breadth, shock);
 
-  // 4) Base & Final
-  const mode = $('#mode').value;
-  const base = computeBase(catScore, mode);
-  const wcbi = computeWBCI(base, sync, breadth, shock);
+    // 5) paint
+    paintGauge(WBCI);
+    $('#breadthChip').textContent = `Breadth: ${Math.round(breadth*100)}%`;
+    $('#syncChip').textContent    = `Synchronicity: ${Math.round(sync*100)}%`;
+    $('#shockChip').textContent   = `Shock: ${shock}`;
+    $('#runMeta').textContent     = `Last run: ${new Date().toLocaleString()} • Mode: ${mode} • Categories loaded: ${Object.values(catScores).filter(v=>v!=null).length}/${CATS.length}`;
+    renderCards(catScores, catMonthly);
+    writeExecNoteSimple(base, breadth, sync, shock, catScores);
 
-  // 5) Paint
-  paintGauge(wcbi);
-  $('#breadthChip').textContent = `Breadth: ${Math.round(breadth*100)}%`;
-  $('#syncChip').textContent    = `Synchronicity: ${Math.round(sync*100)}%`;
-  $('#shockChip').textContent   = `Shock: ${shock}`;
-  $('#runMeta').textContent     = `Last run: ${new Date().toLocaleString()} • Mode: ${mode} • Categories loaded: ${Object.values(catScore).filter(v=>v!=null).length}/${CATS.length}`;
-  renderCards(catScore, catMonthly);
-  writeExecNoteSimple(base, breadth, sync, shock, catScore);
-
-  if(fails.length){
+    if(fails.length){
+      $('#topErr').style.display='block';
+      $('#topErr').textContent = `Loaded with partial data (timed‑out/empty: ${fails.join(', ')}). Run again if needed.`;
+    }
+  }catch(err){
+    console.error(err);
     $('#topErr').style.display='block';
-    $('#topErr').textContent = `Loaded with partial data (timed‑out/empty: ${fails.join(', ')}). Hit Run again if needed.`;
+    $('#topErr').textContent = 'Load error (network/proxy). Please try again.';
+  }finally{
+    $('#runBtn').disabled=false; $('#runBtn').textContent='Run / Refresh';
   }
-  $('#runBtn').disabled=false; $('#runBtn').textContent='Run / Refresh';
 }
 
 document.getElementById('runBtn').addEventListener('click', run);
