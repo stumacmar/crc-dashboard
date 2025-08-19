@@ -1,525 +1,497 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Marshall WBCI — World’s Best Crash Indicator</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://unpkg.com"/>
+<link rel="dns-prefetch" href="https://unpkg.com"/>
 <style>
-:root{
-  --bg:#0f1722; --panel:#111c27; --edge:#1b2c3d; --ink:#e8f0fa; --muted:#9fb0c6;
-  --chip:#162334; --chipTxt:#d7e5f6;
-  --green:#22c55e; --amber:#ffb020; --red:#ef4444; --blue:#3b82f6;
-  --line1:#ffb020; --line2:#22d3ee; --line3:#60a5fa; --line4:#34d399; --line5:#f472b6; --line6:#f59e0b; --line7:#a78bfa;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:linear-gradient(180deg,#0d1722,#0b1320);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-.wrap{max-width:1080px;margin:0 auto;padding:22px 16px}
-h1{margin:0 0 14px;font-size:clamp(22px,3.4vw,36px);line-height:1.15}
-.panel{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:14px;margin-bottom:12px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-input,select,button{font:inherit}
-input[type=text],select{background:#0b1620;border:1px solid #1c2a3c;color:var(--ink);padding:12px;border-radius:12px}
-input[type=text]{flex:1 1 300px}
-button{border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
-button.primary{background:var(--blue);color:#fff}
-button.secondary{background:#1c2a38;color:#cfe4ff;border:1px solid #2a3a4a}
-button:disabled{opacity:.6;cursor:not-allowed}
-
-.grid{display:grid;grid-template-columns:1fr;gap:12px}
-@media(min-width:860px){.grid{grid-template-columns:1.1fr 2fr}}
-
-.kv{display:flex;gap:8px;flex-wrap:wrap}
-.chip{background:var(--chip);border:1px solid #223448;color:var(--chipTxt);padding:7px 10px;border-radius:999px;font-weight:700;font-size:13px}
-
-.donut{position:relative;width:150px;height:150px}
-.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
-.donut .num{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:34px}
-
-.small{font-size:13px;color:var(--muted)}
-
-.cards{display:grid;grid-template-columns:1fr;gap:12px}
-@media(min-width:860px){.cards{grid-template-columns:1fr 1fr}}
-.card{background:#0b1620;border:1px solid #1b2a3c;border-radius:14px;padding:12px}
-.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.badge{background:#0c1928;border:1px solid #23334a;color:#cfe0f8;padding:4px 10px;border-radius:999px;font-weight:800}
-.legend{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));opacity:.9;margin:6px 0}
-.caption{font-size:14px;color:#cbd9ee;margin-top:6px}
-.note{font-size:13px;color:#a8b9cf;margin-top:6px}
-
-.focus{margin-top:4px}
-.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-.btns button{padding:6px 10px;border-radius:999px;background:#132233;border:1px solid #25364a;color:#cfe2ff;font-weight:700}
-
-.toast{position:fixed;right:12px;bottom:12px;background:#10202b;border:1px solid #1d3344;color:#d7ecff;padding:10px 12px;border-radius:10px;font-size:14px;display:none;z-index:10}
-.footer{margin:14px 0 8px;text-align:center;color:#a7b4c4;font-size:12px}
+  :root{
+    --bg:#0f1720; --card:#121c27; --muted:#8ea1b4; --text:#e8f0f7;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --blue:#3b82f6;
+    --chip:#1b2633; --chipText:#cbd6e2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:500 15px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial}
+  h1{font-size:28px;line-height:1.2;margin:24px 0 12px}
+  .wrap{max-width:900px;margin:0 auto;padding:12px 16px 80px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .ctrls{padding:16px;background:var(--card);border-radius:14px}
+  .ctrls input,.ctrls select{width:100%;background:#0b121a;color:var(--text);border:1px solid #1d2a38;padding:10px 12px;border-radius:10px}
+  .btn{background:var(--blue);border:0;color:#fff;padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#1e2a39;color:#d7e3ef;border:1px solid #203040}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--card);border-radius:16px;padding:16px}
+  .kpi{grid-column:span 12;display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:center}
+  .badge{display:inline-block;background:#1c2734;color:#cde; padding:6px 10px;border-radius:999px;font-size:12px;margin-right:6px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px}
+  .ring{width:140px;height:140px;border-radius:50%;background:
+      conic-gradient(var(--ringClr) var(--ringPct),#1a2633 0);
+      display:grid;place-items:center}
+  .ring span{font:800 26px/1 Inter,system-ui;color:#fff}
+  .exec{grid-column:span 12}
+  .exec h2{margin:0 0 10px}
+  .exec p{margin:8px 0;color:#d5e0ea}
+  .cat{grid-column:span 12}
+  @media(min-width:720px){.cat{grid-column:span 6}}
+  .cat h3{margin:0 0 10px}
+  .spark{height:120px;width:100%;border-radius:10px;overflow:hidden;border:1px solid #1e2a35;margin-bottom:8px}
+  .scale{height:8px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));border-radius:999px;margin:8px 0}
+  small.note{display:block;color:var(--muted)}
+  .foot{margin-top:20px;color:#9fb0c2}
+  .error{color:#ffb4b4}
 </style>
+<!-- PINNED version fixes addAreaSeries -->
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
 <div class="wrap">
   <h1>Marshall WBCI — World’s Best Crash Indicator</h1>
 
-  <div class="panel">
+  <div class="ctrls card">
     <div class="row">
-      <input id="fredKey" type="text" placeholder="Paste your FRED API key (required)"/>
-      <select id="mode">
-        <option value="advanced">Advanced (predictive tilt + caps)</option>
-        <option value="equal">Equal weighting</option>
-      </select>
-      <button id="runBtn" class="primary">Run / Refresh</button>
-      <button id="resetBtn" class="secondary">Reset Cache</button>
-      <div id="msg" class="small" style="margin-left:auto"></div>
+      <div style="flex:1 1 280px">
+        <label>FRED API key</label>
+        <input id="apiKey" placeholder="Paste your FRED API key"/>
+      </div>
+      <div style="flex:1 1 260px">
+        <label>Weighting mode</label>
+        <select id="mode">
+          <option value="basic">Basic (equal)</option>
+          <option value="advanced" selected>Advanced (predictive tilt + caps)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="runBtn" class="btn">Run / Refresh</button>
+      <button id="resetBtn" class="btn secondary">Reset Cache</button>
+      <span id="status" class="badge">idle</span>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="panel">
-      <div class="row" style="align-items:center">
-        <div class="donut">
-          <svg viewBox="0 0 120 120" aria-label="WBCI gauge">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#0c1a28" stroke-width="12"></circle>
-            <circle id="arc" cx="60" cy="60" r="50" fill="none" stroke="#ffb020" stroke-width="12" stroke-linecap="round"
-                    stroke-dasharray="314 314" stroke-dashoffset="314"></circle>
-          </svg>
-          <div class="num" id="scoreNum">--</div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card kpi">
+      <div class="ring" id="ring" style="--ringClr:#2dd4bf;--ringPct:0deg"><span id="score">--</span></div>
+      <div>
+        <div class="badges" style="margin-bottom:8px">
+          <span class="badge" id="band">Band: —</span>
+          <span class="badge" id="breadth">Breadth: —</span>
+          <span class="badge" id="sync">Synchronicity: —</span>
+          <span class="badge" id="shock">Shock: —</span>
         </div>
-        <div style="min-width:260px;flex:1">
-          <div id="bandChip" class="chip">WBCI: --</div>
-          <p class="small" id="scoreExpl" style="margin:6px 0 6px">
-            Percentile‑based: each pillar is ranked vs its own last 10 years (inverted where “high = good”), so higher = riskier.
-          </p>
-          <div class="kv">
-            <div class="chip" id="kvBand">Band: —</div>
-            <div class="chip" id="kvBreadth">Breadth: —</div>
-            <div class="chip" id="kvSync">Synchronicity: —</div>
-            <div class="chip" id="kvShock">Shock: —</div>
-          </div>
-          <div class="small" id="runMeta" style="margin-top:6px">—</div>
-        </div>
+        <small class="note">WBCI = average of category risk percentiles vs each category’s own last‑10‑year history (after sensible inversions). Lower = safer; higher = more crash‑prone. </small>
+        <small class="note" id="stamp">—</small>
       </div>
     </div>
 
-    <div class="panel">
-      <h2 style="margin:0 0 6px">Executive Summary</h2>
-      <div id="exec" style="line-height:1.55">Paste your FRED key and press Run.</div>
+    <div class="card exec">
+      <h2>Executive Summary</h2>
+      <div id="execText"><small class="note">Run the dashboard to generate a CIO‑grade note.</small></div>
     </div>
-  </div>
 
-  <div class="panel">
-    <h2 style="margin:0 0 6px">Categories</h2>
-    <div id="cards" class="cards"></div>
-  </div>
+    <!-- Categories will be injected here -->
+    <div id="cats" class="grid" style="grid-column:span 12"></div>
 
-  <div class="panel focus">
-    <h2 style="margin:0 0 6px">Focus Chart</h2>
-    <div id="focusChart" style="height:240px"></div>
-    <div class="btns" id="focusBtns"></div>
+    <div class="foot">Marshall WBCI v1.1 • Built on public FRED data • No S&P/Buffett scoring to avoid noisy/duplicate signals.</div>
   </div>
-
-  <div class="footer">Marshall WBCI • Live FRED data • Deterministic scoring • Mobile‑first charts</div>
 </div>
-<div class="toast" id="toast"></div>
 
-<!-- TradingView Lightweight Charts -->
-<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <script>
-/* ===================== Utilities & Style ===================== */
-const qs = s=>document.querySelector(s);
-const toast = (t)=>{const el=qs('#toast'); el.textContent=t; el.style.display='block'; setTimeout(()=>el.style.display='none',2600);};
-const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
-const bandOf=s=> s==null?{name:'—',color:'#6b7280'} : s<40?{name:'Green',color:getVar('--green')} : s<70?{name:'Amber',color:getVar('--amber')} : {name:'Red',color:getVar('--red')};
-const getVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const monthKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`; };
-const uniq = a => [...new Set(a)];
-const mean = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;
-const stdev = a => { if(a.length<2) return 1; const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))))||1; };
-function percentileRanks(arr){ // returns function(val)->0..100
-  const xs = arr.filter(v=>Number.isFinite(v)).slice().sort((a,b)=>a-b);
-  return (v)=>{ if(!Number.isFinite(v)||!xs.length) return null; let lo=0,hi=xs.length; while(lo<hi){const m=(lo+hi>>1); xs[m]<=v?lo=m+1:hi=m;} return Math.round(100*lo/xs.length); };
-}
+/* =================== CONFIG =================== */
+// Optionally hard-code your key here:
+const FRED_API_KEY = ""; // ← put key here OR paste in the UI. Saved in localStorage.
 
-/* ===================== Config ===================== */
-const CATS = [
-  {key:'rates', name:'Rates / Curve', color:getVar('--line1'), why:'Tight or inverted curves + high long rates raise crash risk via refinancing and valuation pressure.',
-    series:[
-      {id:'DGS10',    name:'10Y Treasury yield',        invert:false, freq:'d'},
-      {id:'T10Y2Y',   name:'10Y–2Y curve',              invert:true,  freq:'d'},
-      {id:'T10Y3M',   name:'10Y–3M curve',              invert:true,  freq:'d'}
-    ]},
-  {key:'credit', name:'Credit / Stress', color:getVar('--line2'), why:'Credit spreads and systemic stress tend to lead equity drawdowns.',
-    series:[
-      {id:'BAMLH0A0HYM2', name:'HY OAS',               invert:false, freq:'d'},
-      {id:'STLFSI4',      name:'St. Louis FSI v4',     invert:false, freq:'w'},
-      {id:'NFCI',         name:'Chicago Fed NFCI',     invert:false, freq:'w'}
-    ]},
-  {key:'liquidity', name:'Liquidity', color:getVar('--line3'), why:'When market depth/CB liquidity fade, sell‑offs accelerate.',
-    series:[
-      {id:'RRPONTSYD',    name:'Fed ON RRP usage',      invert:false, freq:'d'},
-      {id:'WALCL',        name:'Fed balance sheet',     invert:true,  freq:'w'}
-    ]},
-  {key:'usd', name:'USD / External', color:getVar('--line4'), why:'A strong USD tightens global financial conditions and can trigger funding squeezes.',
-    series:[{id:'DTWEXBGS', name:'Broad trade‑weighted USD', invert:false, freq:'d'}]},
-  {key:'energy', name:'Energy Shock', color:getVar('--line5'), why:'Energy burden spikes often precede recessions and earnings downgrades.',
-    series:[{id:'DCOILWTICO', name:'WTI crude (YoY %)', invert:false, freq:'d', derived:'yoypct'}]},
-  {key:'house', name:'Labor / Household', color:getVar('--line6'), why:'Rising claims & slack erode the demand buffer.',
-    series:[
-      {id:'UNRATE', name:'Unemployment rate',          invert:false, freq:'m'},
-      {id:'ICSA',   name:'Initial jobless claims',     invert:false, freq:'w'}
-    ]},
-  {key:'activity', name:'Activity / Sentiment', color:getVar('--line7'), why:'Softening activity & confidence increase vulnerability to shocks.',
-    series:[
-      {id:'INDPRO',  name:'Industrial production',     invert:true,  freq:'m'},
-      {id:'RSAFS',   name:'Retail sales (advance)',    invert:true,  freq:'m'},
-      {id:'UMCSENT', name:'UMich consumer sentiment',  invert:true,  freq:'m'}
-    ]}
-];
-const ADV_WEIGHTS = { // predictive tilt (capped per series later)
-  DGS10:1.2, T10Y2Y:1.4, T10Y3M:1.5,
-  BAMLH0A0HYM2:1.6, STLFSI4:1.3, NFCI:1.2,
-  RRPONTSYD:1.1, WALCL:1.0,
-  DTWEXBGS:1.4,
-  DCOILWTICO:1.2,
-  UNRATE:1.4, ICSA:1.3,
-  INDPRO:1.0, RSAFS:1.0, UMCSENT:1.1
+const SERIES = {
+  // Rates / Curve
+  rates: {
+    label: "Rates / Curve",
+    weight: 1.3, // predictive tilt
+    members: [
+      { id:"DGS10", desc:"10Y Treasury Yield", invert:false, cadence:"D" },
+      { id:"T10Y2Y", desc:"10Y–2Y Spread", invert:true,  cadence:"D" }, // tighter/inverted -> riskier (invert)
+      { id:"T10Y3M", desc:"10Y–3M Spread", invert:true,  cadence:"D" }
+    ]
+  },
+  // Credit / Stress
+  credit: {
+    label: "Credit / Stress",
+    weight: 1.2,
+    members: [
+      { id:"BAMLH0A0HYM2", desc:"HY OAS", invert:false, cadence:"D" },
+      { id:"STLFSI4", desc:"St. Louis Financial Stress (v4)", invert:false, cadence:"W" }
+    ]
+  },
+  // Liquidity (UST market depth proxy: SOMA & reverse repo not easily summed; use low stress & low OAS as easier)
+  liquidity: {
+    label: "Liquidity",
+    weight: 1.0,
+    members: [
+      { id:"BAMLH0A0HYM2", desc:"HY OAS (low = easier credit)", invert:true, cadence:"D" },
+      { id:"STLFSI4", desc:"Financial Stress (low = easier)", invert:true, cadence:"W" }
+    ]
+  },
+  // USD / External
+  usd: {
+    label: "USD / External",
+    weight: 1.15,
+    members: [
+      { id:"DTWEXBGS", desc:"Trade‑Weighted USD (broad)", invert:false, cadence:"W" }
+    ]
+  },
+  // Energy Shock
+  energy: {
+    label: "Energy Shock",
+    weight: 1.05,
+    members: [
+      { id:"DCOILWTICO", desc:"WTI Spot (energy burden proxy)", invert:false, cadence:"D" }
+    ]
+  },
+  // Labor / Household
+  labor: {
+    label: "Labor / Household",
+    weight: 1.1,
+    members: [
+      { id:"UNRATE", desc:"Unemployment Rate", invert:false, cadence:"M" },
+      { id:"ICSA",   desc:"Initial Jobless Claims", invert:false, cadence:"W" }
+    ]
+  },
+  // Activity / Sentiment
+  activity: {
+    label: "Activity / Sentiment",
+    weight: 1.05,
+    members: [
+      { id:"INDPRO",   desc:"Industrial Production", invert:true, cadence:"M" },
+      { id:"TCU",      desc:"Capacity Utilization",  invert:true, cadence:"M" },
+      { id:"RSAFS",    desc:"Retail Sales (Advance)",invert:true, cadence:"M" },
+      { id:"HOUST",    desc:"Housing Starts",        invert:true, cadence:"M" },
+      { id:"PERMIT",   desc:"Building Permits",      invert:true, cadence:"M" },
+      { id:"UMCSENT",  desc:"UMich Sentiment",       invert:true, cadence:"M" }
+    ]
+  }
 };
-const SERIES_CAP = 0.45; // max share of a category by any single series (advanced mode)
 
-/* ===================== Cache & Fetch ===================== */
-const CACHE = {
-  get(k){ try{const v=JSON.parse(localStorage.getItem(k)||'null'); if(!v) return null; if(Date.now()-v.t>6*60*60*1000) return null; return v.d;}catch{return null}},
-  set(k,d){ try{localStorage.setItem(k,JSON.stringify({t:Date.now(),d}))}catch{} },
-  clear(){ Object.keys(localStorage).forEach(k=>{ if(k.startsWith('WBCI_')) localStorage.removeItem(k); }); }
-};
-const PROXIES = [
-  u=>u,
-  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  u=>`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
-  u=>`https://r.jina.ai/http://`+u.replace(/^https?:\/\//,'')
+// Exec‑summary language thresholds
+const BANDS = [
+  {name:"Green", max:40, color:"#22c55e"},
+  {name:"Amber", max:70, color:"#f59e0b"},
+  {name:"Red",   max:100,color:"#ef4444"}
 ];
 
-async function fetchFRED(series_id, api_key, observation_start){
-  const cacheKey = `WBCI_${series_id}_${observation_start}`;
-  const hit = CACHE.get(cacheKey); if(hit) return hit;
-  const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${series_id}&api_key=${api_key}&file_type=json&observation_start=${observation_start}`;
-  let lastErr=null;
-  for(const wrap of PROXIES){
-    try{
-      const res = await fetch(wrap(base), {headers:{'Accept':'application/json'}});
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const txt = await res.text();
-      const json = JSON.parse(txt);
-      if(!json || !Array.isArray(json.observations)) throw new Error('Bad JSON');
-      CACHE.set(cacheKey, json);
-      return json;
-    }catch(e){ lastErr=e; }
-  }
-  throw lastErr||new Error('All proxies failed');
+/* =================== UTIL =================== */
+const $ = sel => document.querySelector(sel);
+const fmtPct = v => (v==null||isNaN(v))?"—":`${Math.round(v)}%`;
+const bandFor = (score)=> BANDS.find(b=>score<=b.max)||BANDS[2];
+const bandColor = (score)=> bandFor(score).color;
+
+function saveKey(k){
+  localStorage.setItem("fredKey", k);
+}
+function getKey(){
+  return ( $("#apiKey").value?.trim() ) || localStorage.getItem("fredKey") || FRED_API_KEY || "";
 }
 
-/* ===================== Transforms ===================== */
-function toMonthly(observations, derived){
-  // Map last value per month (safer for mixed freq)
-  const map = new Map();
-  for(const o of observations){
-    const v = (o.value==='.'? null : +o.value);
-    if(!Number.isFinite(v)) continue;
-    const mk = monthKey(o.date);
-    map.set(mk, v); // last in month wins
-  }
-  let arr = [...map.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,v])=>({t:k+'-01', v}));
-
-  if(derived==='yoypct'){
-    const out=[];
-    for(let i=12;i<arr.length;i++){
-      const prev = arr[i-12].v; const cur = arr[i].v;
-      out.push({t:arr[i].t, v: (Number.isFinite(prev)&&prev!==0)? 100*(cur-prev)/prev : null});
-    }
-    arr = out;
-  }
-  return arr.filter(p=>Number.isFinite(p.v));
+function date10yAgoISO(){
+  const d = new Date(); d.setFullYear(d.getFullYear()-10); return d.toISOString().slice(0,10);
 }
 
-function seriesPercentiles(monthly, invert){
-  if(!monthly.length) return {latest:null, series:[]};
-  const vals = monthly.map(p=>p.v);
-  const pr = percentileRanks(vals);
-  const series = monthly.map(p=>{
-    let s = pr(p.v);
-    if(s==null) return {t:p.t, s:null};
-    if(invert) s = 100-s;
-    return {t:p.t, s:clamp(s)};
-  });
-  const latest = series.at(-1)?.s ?? null;
-  return {latest, series};
+async function fred(series){
+  const key = getKey();
+  if(!key) throw new Error("Missing FRED API key.");
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${series}&api_key=${key}&file_type=json&observation_start=${date10yAgoISO()}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`FRED ${series} HTTP ${r.status}`);
+  const j = await r.json();
+  if(!j.observations) throw new Error(`FRED ${series} payload error`);
+  // map to numeric, keep only non-nan
+  return j.observations
+    .map(o=>({t:o.date, v: parseFloat(o.value)}))
+    .filter(p=>isFinite(p.v));
 }
 
-/* ===================== Category Load & Score ===================== */
-async function loadCategory(cfg, apiKey, start){
-  const series = [];
-  for(const s of cfg.series){
-    const raw = await fetchFRED(s.id, apiKey, start);
-    const monthly = toMonthly(raw.observations, s.derived);
-    const pct = seriesPercentiles(monthly, s.invert);
-    series.push({ meta:s, monthly, pctSeries:pct.series, latest:pct.latest });
-  }
-  // Align percentiles by month across series & build category series (avg of series)
-  const months = uniq(series.flatMap(s=>s.pctSeries.map(p=>p.t))).sort();
-  const catSeries = months.map(t=>{
-    const pts = series.map(s=> s.pctSeries.find(p=>p.t===t)?.s).filter(v=>v!=null);
-    return {t, s: pts.length? Math.round(mean(pts)) : null};
-  }).filter(p=>p.s!=null);
-
-  // Category score (latest)
-  const latest = catSeries.at(-1)?.s ?? null;
-
-  // Advanced vs equal weighting at series level for *latest*
-  let weights = series.map(s=> (ADV_WEIGHTS[s.meta.id]||1));
-  if(qs('#mode').value==='equal'){
-    weights = weights.map(_=>1);
-  }else{
-    // cap any single series
-    const sum = weights.reduce((a,b)=>a+b,0);
-    let ws = weights.map(w=>w/sum);
-    // cap pass
-    let excess = 0;
-    ws = ws.map(w=>{ if(w>SERIES_CAP){ excess+=w-SERIES_CAP; return SERIES_CAP; } return w; });
-    if(excess>0){
-      const eligibleIdx = ws.map((w,i)=> w<SERIES_CAP ? i : -1).filter(i=>i>=0);
-      const add = excess/(eligibleIdx.length||1);
-      ws = ws.map((w,i)=> eligibleIdx.includes(i) ? w+add : w);
-    }
-    weights = ws;
-  }
-  const latestBySeries = series.map(s=>s.latest).filter(v=>v!=null);
-  let catScore = null;
-  if(latestBySeries.length){
-    const num = series.reduce((acc,s,idx)=> acc + (s.latest!=null ? weights[idx]*s.latest : 0), 0);
-    const den = series.reduce((acc,_s,idx)=> acc + weights[idx]*(series[idx].latest!=null?1:0), 0);
-    catScore = den>0 ? Math.round(num/den) : null;
-  }else{
-    catScore = latest;
-  }
-
-  return {
-    key:cfg.key, name:cfg.name, why:cfg.why, color:cfg.color,
-    score:catScore, series, catSeries
-  };
+function percentile(v, arr){
+  if(!arr.length) return 50;
+  const sorted = [...arr].sort((a,b)=>a-b);
+  let idx = sorted.findIndex(x=>x>=v);
+  if(idx<0) idx=sorted.length-1;
+  return (idx/(sorted.length-1))*100;
 }
 
-/* ===================== Composite & Diagnostics ===================== */
-function computeMeta(cats){
-  const valid = cats.filter(c=>c.score!=null);
-  const wbci = valid.length? Math.round(mean(valid.map(c=>c.score))) : null;
-
-  // Breadth: share of categories >= 60
-  const breadth = valid.length? Math.round(100 * valid.filter(c=>c.score>=60).length / valid.length) : 0;
-
-  // Synchronicity: average positive pairwise correlation of last 12 points
-  const aligned = valid.map(c=> c.catSeries.slice(-12).map(p=>p.s));
-  const n = aligned.length;
-  const cors=[];
-  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
-    const a=aligned[i], b=aligned[j]; const m=Math.min(a.length,b.length);
-    const aa=a.slice(-m), bb=b.slice(-m);
-    const ma=mean(aa), mb=mean(bb);
-    let num=0, da=0, db=0;
-    for(let k=0;k<m;k++){ const x=aa[k]-ma, y=bb[k]-mb; num+=x*y; da+=x*x; db+=y*y; }
-    const r = (da&&db)? num/Math.sqrt(da*db) : 0;
-    cors.push(Math.max(0,r)); // only synch (co‑movement)
-  }
-  const synch = cors.length? Math.round(100 * mean(cors)) : 0;
-
-  // Shock: mean abs(last - prev) across categories (0..100 scale already)
-  const shock = Math.round(mean(valid.map(c=>{
-    const s=c.catSeries; if(s.length<2) return 0; return Math.abs(s.at(-1).s - s.at(-2).s);
-  })));
-
-  return {wbci, breadth, synch, shock};
+function seriesScore(points, invert=false){
+  if(points.length<4) return {score:null, series:[]};
+  // last value vs last-10y distribution
+  const values = points.map(p=>p.v);
+  const last = values[values.length-1];
+  let p = percentile(last, values);
+  // normalize direction so that higher = riskier
+  if(invert) p = 100 - p;
+  return {score: Math.round(p), series: points};
 }
 
-/* ===================== Executive Summary (CIO) ===================== */
-function buildSummary(meta, prevScore, cats){
-  const b = bandOf(meta.wbci).name;
-  const delta = (Number.isFinite(prevScore) && Number.isFinite(meta.wbci))? (meta.wbci - prevScore) : 0;
+function avg(arr){ return arr.length? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 
-  const sorted = [...cats].sort((a,b)=> (b.score??-1)-(a.score??-1));
-  const pressures = sorted.slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`);
-  const cushions  = [...sorted].reverse().slice(0,2).map(c=>`${c.name.split(' / ')[0]} ${c.score}`);
-
-  const riskNarrow = meta.breadth<35;
-  const movingTogether = meta.synch>=65;
-  const fast = meta.shock>=40;
-
-  const para1 = `WBCI ${meta.wbci??'—'} — ${b}${delta?` (${delta>0?'+':''}${delta} vs last run)`:''}. Breadth ${meta.breadth}%, Synchronicity ${meta.synch}%, Shock ${meta.shock}.`;
-  const para2 = `Main pressures: ${pressures.join(', ')}. Offsets: ${cushions.join(', ')}.`;
-  let para3 = '';
-  if(riskNarrow && !movingTogether) para3 = 'Risk is concentrated and not yet systemic; deterioration is local rather than broad‑based.';
-  else if(!riskNarrow && movingTogether) para3 = 'Risk is broadening with high co‑movement — a setup where drawdowns accelerate if stress persists.';
-  else if(movingTogether && fast) para3 = 'Signals are moving together and quickly; crash vulnerability is elevated if this persists.';
-  else para3 = 'Signals are mixed; no single pillar dominates.';
-
-  let stance='';
-  if(meta.wbci<40) stance='Constructive but selective: stay invested, prefer quality balance sheets; keep light hedges.';
-  else if(meta.wbci<70) stance='Neutral to defensive: tighten risk, keep dry powder; retain macro hedges.';
-  else stance='Defensive: prioritize liquidity and capital preservation; reduce cyclical beta; consider tail‑risk hedges.';
-
-  const map = Object.fromEntries(cats.map(c=>[c.key,c]));
-  const watch = [];
-  if((map.rates?.score??0)>=60) watch.push('front‑anchored curve steepening (long rates up, front stable)');
-  if((map.credit?.score??0)<60) watch.push('decisive widening in HY OAS and systemic‑stress gauges');
-  if((map.house?.score??0)>=55) watch.push('persistent rise in weekly jobless claims');
-  if((map.usd?.score??0)>=60) watch.push('another leg higher in the USD');
-  if((map.energy?.score??0)>=60) watch.push('a renewed energy‑burden spike');
-
-  const para4 = `Portfolio stance: ${stance}`;
-  const para5 = `Watch next: ${watch.length? watch.join('; ') : 'breadth and synchronicity — a broadening turn would lift risk toward Red.'}`;
-
-  return [para1,para2,para3,para4,para5].map(p=>`<p>${p}</p>`).join('');
+function sparkDataFromScores(categoryScores){
+  // produce monthly-ish densified small chart from normalized scores
+  const s = categoryScores.map((d,i)=>({ t:d.t, s:d.s }));
+  return s;
 }
 
-/* ===================== Charts ===================== */
-function bandColor(s){ const b = bandOf(s); return b.color; }
+function ringUpdate(score){
+  const deg = Math.max(0, Math.min(360, (score/100)*360));
+  const clr = bandColor(score);
+  const ring = $("#ring");
+  ring.style.setProperty("--ringClr", clr);
+  ring.style.setProperty("--ringPct", `${deg}deg`);
+  $("#score").textContent = Math.round(score);
+}
 
+/* =================== CHARTS =================== */
 function renderMini(container, data, score){
-  // data: [{t:'YYYY-MM-01', s:0..100}]
-  container.innerHTML = '';
-  const chart = LightweightCharts.createChart(container, {
-    width: container.clientWidth, height: 120,
-    layout:{background:{type:'solid',color:'transparent'},textColor:'#B9C3CF'},
-    grid:{vertLines:{color:'rgba(255,255,255,.04)'},
-          horzLines:{color:'rgba(255,255,255,.06)'}},
+  container.innerHTML="";
+  const chart = LightweightCharts.createChart(container,{
+    width:container.clientWidth, height:120,
+    layout:{background:{type:'solid',color:'transparent'}, textColor:'#B9C3CF'},
+    grid:{vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.06)'}},
     rightPriceScale:{borderVisible:false, scaleMargins:{top:0.2,bottom:0.2}},
     timeScale:{borderVisible:false, timeVisible:false, secondsVisible:false, rightOffset:2, barSpacing:5},
     handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true},
     handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true}
   });
-  const area = chart.addAreaSeries({
-    lineColor:bandColor(score), lineWidth:2,
-    topColor:bandColor(score)+'33', bottomColor:bandColor(score)+'00'
-  });
+  const color = bandColor(score);
   const points = data.map(d=>({ time:d.t.slice(0,10), value:d.s }));
-  area.setData(points);
+  let series;
+  if (typeof chart.addAreaSeries === 'function') {
+    series = chart.addAreaSeries({
+      lineColor:color, lineWidth:2,
+      topColor:color+'33', bottomColor:color+'00'
+    });
+  } else {
+    series = chart.addLineSeries({ color, lineWidth:2 });
+  }
+  series.setData(points);
   chart.timeScale().fitContent();
-
-  const ro = new ResizeObserver(()=> chart.applyOptions({width:container.clientWidth}));
-  ro.observe(container);
+  new ResizeObserver(()=>chart.applyOptions({width:container.clientWidth})).observe(container);
   return chart;
 }
 
-function renderFocus(el, datasets, activeKey){
-  el.innerHTML='';
-  const chart = LightweightCharts.createChart(el, {
-    width: el.clientWidth, height: 240,
-    layout:{background:{type:'solid',color:'transparent'},textColor:'#B9C3CF'},
-    grid:{vertLines:{color:'rgba(255,255,255,.04)'},
-          horzLines:{color:'rgba(255,255,255,.06)'}},
-    rightPriceScale:{borderVisible:false, scaleMargins:{top:0.15,bottom:0.15}},
-    timeScale:{borderVisible:false, timeVisible:true}
-  });
-  const series = {};
-  Object.entries(datasets).forEach(([k,arr])=>{
-    series[k] = chart.addLineSeries({color:'#7aa0ff', lineWidth:2, visible:(k===activeKey)});
-    series[k].setData(arr.map(d=>({time:d.t.slice(0,10), value:d.s})));
-  });
-  chart.timeScale().fitContent();
-  const ro = new ResizeObserver(()=> chart.applyOptions({width:el.clientWidth}));
-  ro.observe(el);
-  return {chart, series};
-}
-
-/* ===================== Main Runner ===================== */
-let prevScore = Number(localStorage.getItem('WBCI_LAST'))||null;
-
+/* =================== PIPELINE =================== */
 async function run(){
-  qs('#runBtn').disabled=true;
-  const apiKey = qs('#fredKey').value.trim();
-  if(!apiKey){ toast('Paste your FRED API key'); qs('#runBtn').disabled=false; return; }
-  localStorage.setItem('FRED_KEY', apiKey);
-
-  const start = new Date(); start.setFullYear(start.getFullYear()-10); start.setDate(1);
-  const startISO = start.toISOString().slice(0,10);
-
+  const status = $("#status");
   try{
-    // Load all categories (sequential for mobile reliability; change to Promise.all for speed)
-    const cats=[];
-    qs('#cards').innerHTML='';
-    for(const cfg of CATS){
-      const c = await loadCategory(cfg, apiKey, startISO);
-      cats.push(c);
-      // card
-      const card = document.createElement('div');
-      card.className='card';
-      card.innerHTML = `
-        <div class="head">
-          <div style="font-weight:800">${c.name}</div>
-          <div class="badge">${c.score==null?'—':c.score}</div>
-        </div>
-        <div class="mini" id="mini_${c.key}" style="height:120px"></div>
-        <div class="legend"></div>
-        <div class="caption"><b>Baseline:</b> ${c.why}</div>
-        <div class="note small">Band: ${bandOf(c.score).name}</div>
-      `;
-      qs('#cards').appendChild(card);
-      renderMini(card.querySelector('#mini_'+c.key), c.catSeries.slice(-24), c.score);
+    const key = getKey();
+    if(!key) { alert("Enter your FRED API key."); return; }
+    saveKey(key);
+
+    status.textContent="loading…";
+
+    // Cache layer
+    const cacheKey = `wbci-cache::${new Date().toISOString().slice(0,10)}::${$("#mode").value}`;
+    if(localStorage.getItem(cacheKey)){
+      const data = JSON.parse(localStorage.getItem(cacheKey));
+      drawAll(data, "cache");
+      status.textContent="from cache";
+      return;
     }
 
-    // Focus chart
-    const focusData = Object.fromEntries(cats.map(c=>[c.key, c.catSeries.slice(-36)]));
-    const defaultKey = cats[0]?.key;
-    const {chart:focusChart, series:focusSeries} = renderFocus(qs('#focusChart'), focusData, defaultKey||'rates');
-    const btns = qs('#focusBtns'); btns.innerHTML='';
-    cats.forEach(c=>{
-      const b=document.createElement('button'); b.textContent=c.name.split(' / ')[0];
-      b.onclick=()=>{
-        Object.entries(focusSeries).forEach(([k,s])=>s.applyOptions({visible:false}));
-        focusSeries[c.key].applyOptions({visible:true, color:bandColor(c.score)});
-      };
-      btns.appendChild(b);
+    const catResults = {};
+    const catTimeline = {}; // for each category, build normalized timeline for spark
+
+    // Pull & score each member
+    for(const [catKey,cat] of Object.entries(SERIES)){
+      const memberScores = [];
+      const memberTimelines = [];
+      for(const m of cat.members){
+        const pts = await fred(m.id);
+        const {score, series} = seriesScore(pts, m.invert);
+        if(score==null) throw new Error(`Insufficient data: ${m.id}`);
+        // build timeline of normalized percentile per point vs trailing 10y distribution (simple rolling percentile)
+        const values = series.map(p=>p.v);
+        const norm = series.map(p=>({t:p.t, s: Math.round(m.invert ? 100 - percentile(p.v, values) : percentile(p.v, values))}));
+        memberScores.push({id:m.id, desc:m.desc, score, series, norm});
+        memberTimelines.push(norm);
+      }
+      // aggregate category score and synthetic timeline (mean of members per timestamp)
+      const catScore = Math.round( avg(memberScores.map(s=>s.score)) );
+      // unify by date keys
+      const map = new Map();
+      memberTimelines.forEach(arr=>{
+        arr.forEach(pt=>{
+          if(!map.has(pt.t)) map.set(pt.t, []);
+          map.get(pt.t).push(pt.s);
+        });
+      });
+      const merged = [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([t,vals])=>({t, s: Math.round(avg(vals))}));
+      catResults[catKey] = { label:cat.label, score:catScore, members:memberScores, weight:cat.weight };
+      catTimeline[catKey] = merged;
+      status.textContent = `loaded ${cat.label}`;
+    }
+
+    // WBCI headline & diagnostics
+    const weighted = Object.values(catResults).map(c=>c.score * c.weight);
+    const totalW = Object.values(SERIES).map(c=>c.weight).reduce((a,b)=>a+b,0);
+    const wbci = Math.round( weighted.reduce((a,b)=>a+b,0) / totalW );
+
+    const breadth = Math.round( (Object.values(catResults).filter(c=>c.score>=50).length / Object.keys(SERIES).length) * 100 );
+    // pairwise correlation proxy across category timelines: % of latest 6 months windows with same slope sign
+    const latest6 = (arr)=> arr.slice(-6).map(x=>x.s);
+    const slopes = Object.values(catTimeline).map(t=>{
+      const s = latest6(t); if(s.length<2) return 0;
+      return s[s.length-1] - s[0];
     });
+    let sameSignPairs=0, pairs=0;
+    for(let i=0;i<slopes.length;i++){
+      for(let j=i+1;j<slopes.length;j++){
+        pairs++;
+        if(Math.sign(slopes[i])===Math.sign(slopes[j])) sameSignPairs++;
+      }
+    }
+    const synchronicity = pairs? Math.round((sameSignPairs/pairs)*100) : 0;
 
-    // Composite & diagnostics
-    const meta = computeMeta(cats);
-    setGauge(meta.wbci);
-    qs('#kvBand').textContent = `Band: ${bandOf(meta.wbci).name}`;
-    qs('#kvBreadth').textContent = `Breadth: ${meta.breadth}%`;
-    qs('#kvSync').textContent = `Synchronicity: ${meta.synch}%`;
-    qs('#kvShock').textContent = `Shock: ${meta.shock}`;
-    qs('#runMeta').textContent = `Last run: ${new Date().toLocaleString()} • Mode: ${qs('#mode').value} • Categories loaded: ${cats.length}/${CATS.length}`;
+    // “shock” = 7‑day change of headline vs its 1y std, scaled to 0–100
+    const headlineHist = Object.values(catTimeline).reduce((acc,t)=>{
+      t.forEach((pt,idx)=>{ if(!acc[idx]) acc[idx]=[]; acc[idx].push(pt.s); });
+      return acc;
+    },[]).map(arr=>Math.round(avg(arr)));
+    const last = headlineHist[headlineHist.length-1]||wbci;
+    const lastWk = headlineHist[headlineHist.length-8] || last;
+    const delta = Math.abs(last - lastWk);
+    const oneY = headlineHist.slice(-260);
+    const sd = Math.sqrt(avg(oneY.map(x=>Math.pow(x-avg(oneY),2)))||1);
+    const shock = Math.max(0, Math.min(100, Math.round((delta/(sd||1))*20))); // gentle scale
 
-    // Exec summary
-    qs('#exec').innerHTML = buildSummary(meta, prevScore, cats);
-    if(Number.isFinite(meta.wbci)) { localStorage.setItem('WBCI_LAST', String(meta.wbci)); prevScore = meta.wbci; }
+    const data = { wbci, breadth, synchronicity, shock, when:new Date().toISOString(),
+                   catResults, catTimeline };
 
-    qs('#msg').textContent='';
-    toast('Run complete');
-  }catch(e){
-    console.error(e);
-    qs('#exec').innerHTML = `<p style="color:#ffb4c2">Load error — check API key/network and try again.</p>`;
-    qs('#msg').textContent='Load error';
-    toast(e.message||'Load error');
-  }finally{
-    qs('#runBtn').disabled=false;
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+    drawAll(data, "live");
+    status.textContent="done";
+  }catch(err){
+    console.error(err);
+    status.textContent="error";
+    $("#execText").innerHTML = `<div class="error">Load error: ${err.message}. Check API key / network and try again.</div>`;
   }
 }
 
-function setGauge(score){
-  const C=314; // circumference (2πr with r=50)
-  const pct = Math.max(0,Math.min(100,Number(score)||0))/100;
-  qs('#arc').setAttribute('stroke-dasharray',`${C} ${C}`);
-  qs('#arc').setAttribute('stroke-dashoffset', String(C*(1-pct)));
-  const b=bandOf(score);
-  qs('#arc').setAttribute('stroke', b.color);
-  qs('#scoreNum').textContent = Number.isFinite(score)? score : '--';
-  qs('#bandChip').textContent = `WBCI: ${Number.isFinite(score)?score:'--'} — ${b.name}`;
+function drawAll(data, source){
+  const {wbci, breadth, synchronicity, shock, when, catResults, catTimeline} = data;
+
+  // headline ring + badges
+  ringUpdate(wbci);
+  const band = bandFor(wbci);
+  $("#band").textContent = `Band: ${band.name}`;
+  $("#breadth").textContent = `Breadth: ${breadth}%`;
+  $("#sync").textContent = `Synchronicity: ${synchronicity}%`;
+  $("#shock").textContent = `Shock: ${shock}`;
+  $("#stamp").textContent = `Last run: ${new Date(when).toLocaleString()} • Mode: ${$("#mode").value} • Source: ${source}`;
+
+  // Exec summary (CIO style)
+  $("#execText").innerHTML = buildExec({wbci,band,breadth,synchronicity,shock, catResults});
+
+  // Categories UI
+  const cats = $("#cats");
+  cats.innerHTML = "";
+  for(const [key,cat] of Object.entries(SERIES)){
+    const r = catResults[key];
+    const tile = document.createElement("div");
+    tile.className = "card cat";
+    tile.innerHTML = `
+      <h3>${cat.label} <span class="badge">${r.score}</span></h3>
+      <div class="spark" id="spark-${key}"></div>
+      <div class="scale"></div>
+      <small class="note"><b>Baseline:</b> ${baselineText(key)}</small>
+      <small class="note">${categoryComment(key, r.score)}</small>
+    `;
+    cats.appendChild(tile);
+    renderMini( document.getElementById(`spark-${key}`), catTimeline[key], r.score );
+  }
 }
 
-/* ===================== Wire Up ===================== */
-(function init(){
-  const saved = localStorage.getItem('FRED_KEY')||'';
-  if(saved) qs('#fredKey').value=saved;
-  qs('#runBtn').addEventListener('click', run);
-  qs('#resetBtn').addEventListener('click', ()=>{ CACHE.clear(); toast('Cache cleared'); });
+/* =================== CIO NARRATIVE =================== */
+function buildExec({wbci,band,breadth,synchronicity,shock,catResults}){
+  // rank categories by contribution (weight*score)
+  const contrib = Object.entries(catResults)
+     .map(([k,v])=>({k, name:SERIES[k].label, val: Math.round(v.score*SERIES[k].weight)}))
+     .sort((a,b)=>b.val-a.val);
+
+  const top3 = contrib.slice(0,3).map(c=>`${c.name} ${catResults[c.k].score}`).join(" · ");
+  const offsets = contrib.slice(-2).map(c=>`${c.name} ${catResults[c.k].score}`).join(" · ");
+
+  const stance = (()=>{
+    if(band.name==="Red" || (breadth>=50 && synchronicity>=50)) return "Defensive: raise cash, shorten duration, keep tail‑risk hedges on.";
+    if(band.name==="Amber"){
+      if(shock>=40) return "Cautious: buy protection on strength, reduce cyclicals, favor quality balance sheets.";
+      return "Constructive but alert: stay selective; keep light hedges; buy dips in defensives only.";
+    }
+    // Green
+    if(synchronicity<=20 && breadth<=30) return "Constructive: risk can be taken selectively; keep guardrails and watch triggers.";
+    return "Neutral: maintain balance; use weakness to rotate rather than add net risk.";
+  })();
+
+  const watch = computeWatchlist(catResults);
+
+  return `
+    <p><b>WBCI ${wbci} — ${band.name}.</b> Higher = riskier vs each category’s own last‑10‑year range.</p>
+    <p><b>Market texture:</b> Breadth ${breadth}% (share of pillars with above‑average risk). Synchronicity ${synchronicity}% (how many pillars are moving together). Shock ${shock} (speed of change).</p>
+    <p><b>Main pressures:</b> ${top3 || "—"}. <b>Offsets:</b> ${offsets || "—"}.</p>
+    <p><b>Read:</b> ${readSentence(breadth,synchronicity,shock)}.</p>
+    <p><b>Portfolio stance:</b> ${stance}</p>
+    <p><b>Watch next:</b> ${watch}</p>
+  `;
+}
+
+function readSentence(b,s,sh){
+  const parts=[];
+  parts.push(b>=50?"risk is broad":"risk is narrow");
+  parts.push(s>=50?"and co‑movement is high":"and co‑movement is low");
+  parts.push(sh>=40?"while momentum is fast":"with changes developing gradually");
+  return parts.join(", ")+".";
+}
+
+function computeWatchlist(catResults){
+  const alerts = [];
+  if(catResults.rates?.score>=60) alerts.push("front‑anchored curve steepening with long rates rising");
+  if(catResults.credit?.score>=55) alerts.push("decisive widening in HY OAS or a jump in STLFSI4");
+  if(catResults.labor?.score>=50) alerts.push("persistent climb in jobless claims confirming softer labor");
+  if(catResults.usd?.score>=70) alerts.push("further USD strength tightening global financial conditions");
+  if(catResults.energy?.score>=60) alerts.push("new energy‑burden spike pressuring earnings");
+  if(!alerts.length) alerts.push("stay focused on claims, HY spreads, and curve slope for early turns");
+  return alerts.join("; ")+".";
+}
+
+function baselineText(key){
+  switch(key){
+    case "rates": return "Amber. Tight/inverting curves + high long rates raise crash risk via refinancing and valuation pressure.";
+    case "credit": return "Green. Credit spreads and systemic stress tend to lead equity drawdowns.";
+    case "liquidity": return "Green. When bond‑market depth and money conditions falter, sell‑offs accelerate.";
+    case "usd": return "Red. A strong USD tightens global financial conditions and can trigger funding squeezes.";
+    case "energy": return "Amber. Energy burden spikes often precede recessions and earnings downgrades.";
+    case "labor": return "Amber. Rising claims and delinquencies erode the household buffer.";
+    case "activity": return "Amber. Softening activity/confidence raises vulnerability to shocks.";
+    default: return "";
+  }
+}
+
+function categoryComment(key, score){
+  const tone = score<40?"supportive": score<70?"neutral":"pressuring";
+  return `${SERIES[key].label.split(" / ").slice(-1)[0]} is ${tone} (score ${score}). Higher = riskier vs its own decade range.`;
+}
+
+/* =================== WIRING =================== */
+$("#apiKey").value = getKey();
+$("#runBtn").addEventListener("click", run);
+$("#resetBtn").addEventListener("click", ()=>{
+  Object.keys(localStorage).filter(k=>k.startsWith("wbci-cache::")).forEach(k=>localStorage.removeItem(k));
+  $("#status").textContent="cache cleared";
+});
+
+/* Tiny UAT: verify chart API presence early to avoid runtime trap */
+(function quickUAT(){
+  if(!window.LightweightCharts || typeof LightweightCharts.createChart!=="function"){
+    $("#status").textContent="charts lib error";
+    $("#execText").innerHTML = `<div class="error">Charts library failed to load. Check network or CSP.</div>`;
+  } else {
+    $("#status").textContent="ready";
+  }
 })();
 </script>
 </body>
