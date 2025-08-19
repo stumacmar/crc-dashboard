@@ -2,403 +2,575 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Marshall WBCI — World’s Best Crash Indicator</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af;
-    --amber:#f59e0b; --green:#22c55e; --red:#ef4444; --chip:#1f2937; --chipText:#cbd5e1;
+    --bg:#0f1720; --panel:#121c26; --muted:#a7b4c4; --text:#e8f0f9;
+    --chip:#1b2835; --amber:#f5a623; --green:#22c55e; --red:#ef4444;
+    --line1:#ffb020; --line2:#22d3ee; --line3:#60a5fa; --line4:#34d399; --line5:#f472b6; --line6:#f59e0b; --line7:#a78bfa;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  .wrap{max-width:980px;margin:28px auto;padding:0 16px}
-  h1{font-size:clamp(22px,3.5vw,36px);line-height:1.2;margin:0 0 18px}
-  .controls{background:var(--panel);border-radius:16px;padding:16px;margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  input[type="text"]{flex:1;min-width:280px;background:#0b1220;border:1px solid #202b40;color:var(--text);padding:10px 12px;border-radius:10px}
-  select{background:#0b1220;border:1px solid #202b40;color:var(--text);padding:10px 12px;border-radius:10px}
-  button{background:#3b82f6;border:none;color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:var(--text);background:linear-gradient(180deg,#0e1620,#0a1218);}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  h1{font-size:clamp(22px,3.4vw,38px);line-height:1.15;margin:0 0 14px}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .panel{background:var(--panel);border-radius:16px;padding:16px;box-shadow:0 1px 0 #0a1016 inset,0 0 0 1px #0d1722}
+  .toolbar .box{flex:1 1 260px}
+  input,select,button,textarea{font:inherit}
+  input[type=text],select{width:100%;background:#0c141c;border:1px solid #192734;border-radius:12px;color:var(--text);padding:12px}
+  button.primary{background:#3b82f6;border:none;color:white;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+  button.secondary{background:#1f2b36;border:1px solid #2a3a47;color:#cfe2f5;border-radius:12px;padding:12px 16px;font-weight:600;cursor:pointer}
   button:disabled{opacity:.6;cursor:not-allowed}
-  .grid{display:grid;grid-template-columns:1fr;gap:14px}
-  @media (min-width:800px){.grid{grid-template-columns:1.2fr 2fr}}
-  .card{background:var(--panel);border-radius:16px;padding:16px}
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-  .chip{background:var(--chip);color:var(--chipText);padding:6px 10px;border-radius:999px;font-weight:700;font-size:13px}
-  .ring{position:relative;width:152px;height:152px}
-  .ring svg{width:100%;height:100%}
-  .ring .num{position:absolute;inset:0;display:grid;place-items:center;font-size:36px;font-weight:800}
-  .kvs{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
-  .kvs .chip{font-weight:800}
-  h2{margin:0 0 10px}
-  .summary p{margin:.5rem 0;color:var(--text);}
-  .cats{display:grid;grid-template-columns:1fr;gap:12px}
-  @media (min-width:800px){.cats{grid-template-columns:1fr 1fr}}
-  .cat-card{background:#0b1220;border:1px solid #1f2a3f;border-radius:14px;padding:14px;position:relative}
-  .cat-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .score-badge{font-weight:800;background:#101a2e;color:#c9d4ec;border:1px solid #223150;padding:4px 10px;border-radius:999px}
-  .baseline{font-size:14px;color:#c7cad2;margin-top:6px}
-  .bar{height:6px;border-radius:6px;background:linear-gradient(90deg,#16a34a,#f59e0b 50%,#ef4444);opacity:.85;margin:8px 0 6px}
-  .cat-note{font-size:13px;color:#bfc6d8;margin-top:6px}
-  .footer{color:#9aa4bd;font-size:12px;text-align:center;margin:18px 0}
-  canvas{width:100%;height:80px}
+  .scorecard{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
+  .donut{position:relative;width:110px;height:110px}
+  .donut svg{transform:rotate(-90deg)}
+  .donut .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{background:var(--chip);padding:8px 10px;border-radius:999px;color:#d7e7f8;border:1px solid #1c2a36;font-weight:600}
+  .sub{color:var(--muted);font-size:14px}
+  h2{margin:8px 0 10px}
+  .exec{line-height:1.55;font-size:16px}
+  .exec p{margin:8px 0}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+  .col-12{grid-column:span 12}
+  .col-6{grid-column:span 12}
+  .col-4{grid-column:span 12}
+  @media(min-width:720px){ .col-6{grid-column:span 6} .col-4{grid-column:span 4} }
+  .cat{position:relative}
+  .cat .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .score-pill{background:#09121a;border:1px solid #172433;padding:4px 10px;border-radius:999px;font-weight:700}
+  .spark{background:#0c151e;border:1px solid #182634;border-radius:12px;padding:10px;position:relative}
+  .spark canvas{width:100%;height:120px}
+  .legend{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--green),#f59e0b,var(--red));margin:8px 0}
+  .foot{color:#c4d2e2;font-size:14px}
+  .muted{opacity:.85}
+  .small{font-size:13px;color:#a9b9ca}
+  .ok{color:var(--green)} .warn{color:var(--amber)} .risk{color:var(--red)}
+  .footer{margin:18px 0 10px;text-align:center;color:#a7b4c4;font-size:12px}
+  .toast{position:fixed;right:12px;bottom:12px;background:#10202b;border:1px solid #1d3344;color:#d7ecff;padding:10px 12px;border-radius:10px;font-size:14px;display:none}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;background:#0a1218;border:1px solid #1a2835;border-radius:6px;padding:0 6px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Marshall WBCI — World’s Best Crash Indicator</h1>
+<div class="wrap">
+  <h1>Marshall WBCI — World’s Best Crash Indicator</h1>
 
-    <div class="controls">
-      <input id="apiKey" type="text" placeholder="(Optional) FRED API key" />
+  <!-- TOOLBAR -->
+  <div class="row toolbar">
+    <div class="panel box">
+      <label class="small">FRED API key (saved locally)</label>
+      <input id="fredKey" type="text" placeholder="paste your FRED API key" />
+    </div>
+    <div class="panel box">
+      <label class="small">Weighting mode</label>
       <select id="mode">
-        <option value="advanced">Advanced (predictive tilt + synchronicity)</option>
-        <option value="basic">Basic (equal weight)</option>
+        <option value="advanced">Advanced (predictive tilt + category caps)</option>
+        <option value="equal">Equal weighting</option>
       </select>
-      <button id="runBtn">Run / Refresh</button>
-      <button id="resetBtn" style="background:#64748b">Reset Cache</button>
     </div>
-
-    <div class="grid">
-      <div class="card">
-        <div class="row">
-          <div class="ring" id="ring">
-            <svg viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="54" stroke="#0b1220" stroke-width="12" fill="none"/>
-              <circle id="arc" cx="60" cy="60" r="54" stroke="#f59e0b" stroke-width="12" fill="none"
-                      stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="339.292" stroke-dashoffset="339.292"/>
-            </svg>
-            <div class="num" id="ringNum">--</div>
-          </div>
-          <div style="min-width:260px;flex:1">
-            <div class="chip" id="bandChip">CRC: --</div>
-            <p style="color:#cbd5e1;margin:8px 0 0">
-              Composite = average of category risk percentiles vs their own last decade (with sensible inverts).
-            </p>
-            <div class="kvs">
-              <div class="chip" id="kvBand">Band: —</div>
-              <div class="chip" id="kvBreadth">Breadth: —</div>
-              <div class="chip" id="kvSynch">Synchronicity: —</div>
-              <div class="chip" id="kvShock">Shock: —</div>
-            </div>
-            <p style="color:#93a2bf;margin-top:6px" id="runMeta">Last run: —</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card summary">
-        <h2>Executive Summary</h2>
-        <div id="exec-summary" style="margin-top:6px;color:#dbe3f8">Run the dashboard to generate a current analyst note.</div>
-      </div>
+    <div class="panel box" style="display:flex;gap:8px;align-items:flex-end">
+      <button id="runBtn" class="primary" style="flex:1">Run / Refresh</button>
+      <button id="resetBtn" class="secondary">Reset Cache</button>
     </div>
-
-    <div class="card">
-      <h2 style="margin-bottom:10px">Categories</h2>
-      <div class="cats" id="cats"></div>
-    </div>
-
-    <div class="footer">Marshall WBCI v1.0 • Built on public data • Deterministic CIO summary</div>
   </div>
 
-<!-- Chart.js for sparklines -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-
-<!-- ===== CIO Exec Summary Helper (from previous message) ===== -->
-<script>
-window.CIOExec = (() => {
-  const clamp=(x,lo=0,hi=100)=>Math.max(lo,Math.min(hi,x));
-  const band = s => s>=70 ? "Red" : (s>=40 ? "Amber" : "Green");
-  const arrow=d=>d>0?"↑":(d<0?"↓":"→");
-  const pct=x=>`${Math.round(x)}%`;
-  const fmt=x=>Math.round(clamp(x));
-  const title=s=>({Green:"Constructive",Amber:"Cautious",Red:"Defensive"})[s];
-  function rankCats(cats){
-    const arr=Object.entries(cats).map(([k,v])=>({key:k,label:v.label,score:fmt(v.score||0),delta:Math.round(v.delta||0)}))
-      .sort((a,b)=>b.score-a.score);
-    return {
-      pressures:arr.filter(x=>x.score>=60).slice(0,4),
-      offsets:arr.filter(x=>x.score<40).slice(0,4),
-      mids:arr.filter(x=>x.score>=40&&x.score<60).slice(0,4),
-      ranked:arr
-    };
-  }
-  const catOneLiners={
-    ratesCurve:s=>s>=60?"Rates/curve are tight — financing is harder and valuations face a headwind."
-                       :s<40?"Rates/curve are easy-ish — financing backdrop is friendlier."
-                             :"Rates/curve are neutral — not a major push or drag right now.",
-    creditStress:s=>s>=60?"Credit stress is rising — refinancing and risk appetite could wobble."
-                        :s<40?"Credit stress is calm — a useful cushion against shocks."
-                              :"Credit is steady — watch for spread moves.",
-    liquidity:s=>s>=60?"Liquidity looks thin — air pockets risk bigger moves."
-                      :s<40?"Liquidity is decent — market depth helps absorb shocks."
-                            :"Liquidity is mixed — fine in spots, patchy in others.",
-    usdExternal:s=>s>=60?"USD/external pressure is high — tightens global conditions."
-                        :s<40?"USD/external looks easy — tailwind for risk assets."
-                              :"USD/external is neutral — not driving the tape.",
-    energyShock:s=>s>=60?"Energy burden is elevated — margins and demand can suffer."
-                        :s<40?"Energy burden is light — helps consumers and margins."
-                              :"Energy is manageable — not a swing factor yet.",
-    laborHousehold:s=>s>=60?"Labor/household are softening — demand buffer is thinner."
-                          :s<40?"Labor/household look resilient — spending support remains."
-                                :"Labor/household are stable — no clear turn.",
-    activitySentiment:s=>s>=60?"Activity/sentiment are weakening — growth sensitivity is higher."
-                             :s<40?"Activity/sentiment are firm — downside absorption improves."
-                                   :"Activity/sentiment are middling — watch direction."
-  };
-  function buildText(s){
-    const score=fmt(s.score), last=(s.lastScore==null?null:fmt(s.lastScore)), delta=(last==null?null:(score-last));
-    const b=band(score), breadth=Math.max(0,Math.min(100,Math.round(s.breadthPct||0)));
-    const synch=Math.max(0,Math.min(100,Math.round(s.synchPct||0))); const shock=fmt(s.shock||0);
-    const {pressures,offsets,ranked}=rankCats(s.categories||{});
-    const head=[`<strong>WBCI ${score} — ${b}</strong>${last==null?``:` (${delta>0?`+${delta}`:delta} vs last run)`}.`,
-                `Breadth ${pct(breadth)} (share of pillars above average risk).`,
-                `Synchronicity ${pct(synch)} (how many pillars are moving together).`,
-                `Shock ${shock} (speed of change).`].join(" ");
-    const pressTxt=pressures.length?`Main pressures: ${pressures.map(x=>`${x.label} ${x.score}${x.delta?` ${arrow(x.delta)}`:""}`).join(", ")}.`
-                                 :`No major pressure clusters — risks are not concentrated at the top end.`;
-    const offsTxt=offsets.length?`Cushions: ${offsets.map(x=>`${x.label} ${x.score}${x.delta?` ${arrow(x.delta)}`:""}`).join(", ")}.`
-                                :`Few cushions — most pillars are mid/high.`;
-    const breadthTxt=breadth>=60?"Risk is broad-based; more areas are pulling the same way."
-                      :breadth>=30?"Risk breadth is mixed; some areas elevated, others calm."
-                                   :"Risk is narrow; stress is concentrated, not yet systemic.";
-    const synchTxt=synch>=60?"Co-movement is strong — regime shifts accelerate in this state."
-                    :synch>=30?"Co-movement is building — a turn could spread."
-                               :"Little co-movement — deterioration is still patchy.";
-    const shockTxt=shock>=70?"Momentum is hot — the tape can move quickly."
-                   :shock>=40?"Momentum is turning — expect choppier swings."
-                              :"Momentum is calm — changes are slower and more local.";
-    const triggers=[];
-    const add=t=>{if(t && !triggers.includes(t) && triggers.length<3)triggers.push(t);}
-    const cat=id=> (s.categories&&s.categories[id])?s.categories[id]:{score:0,delta:0};
-    const high=id=> (cat(id).score||0)>=60; const rising=id=> (cat(id).delta||0)>=5;
-    if (high('ratesCurve')||rising('ratesCurve')) add("front‑anchored curve steepening or renewed inversion");
-    if (high('creditStress')||rising('creditStress')) add("a decisive widening in HY spreads and systemic stress gauges");
-    if (high('laborHousehold')||rising('laborHousehold')) add("a persistent rise in weekly claims confirming softer labor");
-    if (high('usdExternal')||rising('usdExternal')) add("further USD strength tightening global financial conditions");
-    if (high('energyShock')||rising('energyShock')) add("another energy‑price spike pressuring margins and demand");
-    const watch = triggers.length?`Watch next: ${triggers.map((t,i)=>`${i+1}) ${t}`).join("; ")}.`
-                                 :`Watch next: stabilization in spreads and claims would ease risk; the opposite would push WBCI higher.`;
-    const stance = (()=> {
-      const titleTxt=({Green:"Constructive",Amber:"Cautious",Red:"Defensive"})[b];
-      if (b==="Red"||(breadth>=50&&synch>=50)) return `${titleTxt}: emphasize capital preservation, shorten risk, add hedges, trim USD‑sensitive exposure.`;
-      if (b==="Amber") return `${titleTxt}: stay invested but selective; prefer quality balance sheets, keep light hedges, and watch the triggers.`;
-      return `${titleTxt}: constructive risk, with guardrails — hold dry powder and monitor claims/spreads for early turns.`;
-    })();
-    const catNotes=ranked.map(x=>{const fn=catOneLiners[x.key]||(()=> "");return {label:x.label,note:fn(x.score)};});
-    return {headline:head,drivers:pressTxt,offsets:offsTxt,diagnostics:`${breadthTxt} ${synchTxt} ${shockTxt}`,watch,stance,catNotes};
-  }
-  function render(targetEl,state){
-    const el=(typeof targetEl==="string")?document.getElementById(targetEl):targetEl; if(!el) return;
-    const LS_KEY="wbci_last_score"; const lastScore=Number(localStorage.getItem(LS_KEY));
-    const out=buildText({...state,lastScore:Number.isFinite(lastScore)?lastScore:null});
-    if (Number.isFinite(state.score)) localStorage.setItem(LS_KEY,String(Math.round(state.score)));
-    el.innerHTML=[`<p>${out.headline}</p>`,`<p>${out.drivers}</p>`,`<p>${out.offsets}</p>`,
-                  `<p>${out.diagnostics}</p>`,`<p><strong>Portfolio stance:</strong> ${out.stance}</p>`,
-                  `<p><em>${out.watch}</em></p>`].join("");
-    // optional cat one‑liners if noteElId passed
-    if (state.categories){
-      out.catNotes.forEach(n=>{
-        const c=Object.values(state.categories).find(v=>v.label===n.label && v.noteElId);
-        if (c){const node=document.getElementById(c.noteElId); if(node) node.textContent=n.note;}
-      });
-    }
-  }
-  return {render};
-})();
-</script>
-
-<script>
-/* ========= Demo data + scoring engine ========= */
-/* Replace loadLiveData() with your real fetchers; keep the shape. */
-
-const $ = id => document.getElementById(id);
-const fmtBand = s => s>=70?'Red':(s>=40?'Amber':'Green');
-
-function lerp(a,b,t){return a+(b-a)*t}
-function rnd(seed){ // deterministic-ish small noise by seed/time
-  const x = Math.sin(seed*9999 + (Date.now()/3600000|0))*10000; return x - Math.floor(x);
-}
-
-// ---- Demo loader (replace with live) ----
-async function loadLiveData(){
-  // Return last-12 values for each category (0–100 risk scale), newest last.
-  // In real code, compute percentiles vs last 10y and invert “good-high” series.
-  const t = Date.now()/86400000|0;
-  const mk = (base, vol, seed) => {
-    const arr=[]; let v=base;
-    for(let i=0;i<16;i++){ v=clamp01(v + (rnd(seed+i)-0.5)*vol); arr.push(v); }
-    return arr.map(x=>Math.round(x*100));
-  };
-  const clamp01 = x => Math.max(0, Math.min(1, x));
-
-  return {
-    // higher = riskier on all (already inverted where needed)
-    ratesCurve:      mk(0.62,0.08, t+1),
-    creditStress:    mk(0.30,0.10, t+2),
-    liquidity:       mk(0.33,0.07, t+3),
-    usdExternal:     mk(0.74,0.08, t+4),
-    energyShock:     mk(0.58,0.12, t+5),
-    laborHousehold:  mk(0.35,0.10, t+6),
-    activitySentiment:mk(0.42,0.07, t+7)
-  };
-}
-
-// ---- Scoring & diagnostics ----
-function computeScore(seriesByCat, mode="advanced"){
-  // category score = latest value (0–100). delta = latest - prior (bounded).
-  const cats = {};
-  Object.entries(seriesByCat).forEach(([key,arr])=>{
-    const score = arr[arr.length-1];
-    const delta = score - (arr[arr.length-2] ?? score);
-    cats[key] = { label:labelFor(key), score, delta, series:arr.slice(-16) };
-  });
-
-  // breadth = share of categories with score >= 50
-  const vals = Object.values(cats).map(v=>v.score);
-  const breadthPct = Math.round(100 * (vals.filter(v=>v>=50).length / vals.length));
-
-  // synchronicity = correlation of last 8 changes across categories (scaled to 0–100)
-  const diffs = Object.values(cats).map(v=> v.series.slice(-8).map((x,i,aa)=> i? x-aa[i-1]:0).slice(1));
-  let pair = 0, sumCorr = 0;
-  for(let i=0;i<diffs.length;i++){
-    for(let j=i+1;j<diffs.length;j++){
-      const c = corr(diffs[i],diffs[j]); if (!Number.isFinite(c)) continue;
-      sumCorr += Math.max(0,c); pair++;
-    }
-  }
-  const synchPct = pair? Math.round(100*(sumCorr/pair)) : 0;
-
-  // shock = average absolute one-step change (last two points) across cats (scaled)
-  const shock = Math.round(vals.reduce((a,_,i)=> a + Math.abs((Object.values(cats)[i].delta||0)),0)/vals.length);
-
-  // composite: weighted mean by mode
-  const weights = (mode==="advanced")
-    ? {ratesCurve:1.3, creditStress:1.4, liquidity:1.0, usdExternal:1.1, energyShock:1.0, laborHousehold:1.2, activitySentiment:1.0}
-    : {ratesCurve:1, creditStress:1, liquidity:1, usdExternal:1, energyShock:1, laborHousehold:1, activitySentiment:1};
-
-  const wsum = Object.entries(cats).reduce((a,[k,v])=>a + (weights[k]||1)*v.score, 0);
-  const wtot = Object.entries(cats).reduce((a,[k,_])=>a + (weights[k]||1), 0);
-  const score = Math.round(wsum / wtot);
-
-  return {score, breadthPct, synchPct, shock, cats};
-}
-
-function corr(a,b){
-  const n = Math.min(a.length,b.length); if(n===0) return 0;
-  let sa=0,sb=0,saa=0,sbb=0,sab=0;
-  for(let i=0;i<n;i++){ sa+=a[i]; sb+=b[i]; saa+=a[i]*a[i]; sbb+=b[i]*b[i]; sab+=a[i]*b[i]; }
-  const vA=saa - sa*sa/n, vB=sbb - sb*sb/n;
-  return (sab - sa*sb/n) / Math.sqrt(Math.max(1e-9,vA*vB));
-}
-function labelFor(key){
-  return ({
-    ratesCurve:"Rates / Curve",
-    creditStress:"Credit / Stress",
-    liquidity:"Liquidity",
-    usdExternal:"USD / External",
-    energyShock:"Energy Shock",
-    laborHousehold:"Labor / Household",
-    activitySentiment:"Activity / Sentiment"
-  })[key] || key;
-}
-
-// ---- UI wiring ----
-const charts = {};
-async function run(){
-  $('runBtn').disabled = true;
-  const mode = $('mode').value;
-
-  // 1) Load data (replace with real)
-  const series = await loadLiveData();
-
-  // 2) Compute scores
-  const {score,breadthPct,synchPct,shock,cats} = computeScore(series, mode);
-
-  // 3) Paint ring
-  paintRing(score);
-
-  // 4) KVs
-  $('bandChip').textContent = `WBCI: ${score} — ${fmtBand(score)}`;
-  $('kvBand').textContent   = `Band: ${fmtBand(score)}`;
-  $('kvBreadth').textContent= `Breadth: ${breadthPct}%`;
-  $('kvSynch').textContent  = `Synchronicity: ${synchPct}%`;
-  $('kvShock').textContent  = `Shock: ${shock}`;
-  $('runMeta').textContent  = `Last run: ${new Date().toLocaleString()} • Mode: ${mode}`;
-
-  // 5) Category cards w/ spark charts + baseline text + target for one-liners
-  paintCategories(cats);
-
-  // 6) CIO summary
-  const catsForSummary = {};
-  Object.entries(cats).forEach(([k,v])=>{
-    catsForSummary[k] = {label:v.label, score:v.score, delta:v.delta, noteElId:`note-${k}`};
-  });
-  CIOExec.render("exec-summary", {
-    score, breadthPct, synchPct, shock, categories: catsForSummary
-  });
-
-  $('runBtn').disabled = false;
-}
-function paintRing(score){
-  const circ = 2*Math.PI*54; // dasharray
-  const arc = $('arc');
-  const pct = Math.max(0,Math.min(100,score))/100;
-  arc.style.strokeDasharray = String(circ);
-  arc.style.strokeDashoffset = String(circ*(1-pct));
-  arc.style.stroke = score>=70?'#ef4444':(score>=40?'#f59e0b':'#22c55e');
-  $('ringNum').textContent = Math.round(score);
-}
-function paintCategories(cats){
-  const host = $('cats'); host.innerHTML = '';
-  Object.entries(cats).forEach(([key,v])=>{
-    const col = v.score>=70?'#ef4444':(v.score>=40?'#f59e0b':'#22c55e');
-    const card = document.createElement('div');
-    card.className='cat-card';
-    card.innerHTML = `
-      <div class="cat-head">
-        <div style="font-weight:800">${v.label}</div>
-        <div class="score-badge">${Math.round(v.score)}</div>
+  <!-- SCORE CARD -->
+  <div class="panel scorecard" id="scorePanel">
+    <div class="donut" aria-label="WBCI score">
+      <svg width="110" height="110">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="#1a2733" stroke-width="12"></circle>
+        <circle id="arc" cx="55" cy="55" r="46" fill="none" stroke="#f5a623" stroke-linecap="round" stroke-width="12" stroke-dasharray="289 289" stroke-dashoffset="289"></circle>
+      </svg>
+      <div class="num" id="scoreNum">--</div>
+    </div>
+    <div>
+      <div id="scoreBand" class="chip" style="margin-bottom:8px">WBCI: --</div>
+      <div class="sub" id="scoreExpl">Composite = average of category risk percentiles vs their own last decade (with sensible inverts).</div>
+      <div style="margin-top:10px" class="badges">
+        <div class="chip" id="badgeBand">Band: —</div>
+        <div class="chip" id="badgeBreadth">Breadth: —</div>
+        <div class="chip" id="badgeSync">Synchronicity: —</div>
+        <div class="chip" id="badgeShock">Shock: —</div>
       </div>
-      <canvas id="spark-${key}"></canvas>
-      <div class="bar" style="--c:${col}"></div>
-      <div class="baseline"><strong>Baseline:</strong> ${baselineText(key)}</div>
-      <div class="cat-note" id="note-${key}"></div>
-    `;
-    host.appendChild(card);
-    // chart
-    const ctx = card.querySelector(`#spark-${key}`).getContext('2d');
-    if (charts[key]) charts[key].destroy();
-    charts[key] = new Chart(ctx,{
-      type:'line',
-      data:{labels:v.series.map((_,i)=>i+1),
-            datasets:[{data:v.series,borderColor:col,backgroundColor:'transparent',tension:.35,pointRadius:0,borderWidth:2}]},
-      options:{responsive:true,plugins:{legend:{display:false},tooltip:{enabled:false}},
-               scales:{x:{display:false},y:{display:false}}}
-    });
-  });
+      <div class="small muted" id="runMeta" style="margin-top:8px">—</div>
+    </div>
+  </div>
+
+  <!-- EXEC SUMMARY -->
+  <div class="panel">
+    <h2>Executive Summary</h2>
+    <div class="exec" id="exec"></div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="panel">
+    <h2>Categories</h2>
+    <div class="grid" id="cats"></div>
+  </div>
+
+  <div class="footer">Marshall WBCI • Built on public FRED data • No guarantees; informational only.</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIG
+========================================================= */
+const CATEGORIES = [
+  { key:'rates', name:'Rates / Curve', color:'var(--line1)',
+    series:[
+      { id:'DGS10',         name:'10Y Treasury yield',              invert:false,  freq:'d'},
+      { id:'T10Y2Y',        name:'10Y–2Y curve',                     invert:true,   freq:'d'},
+      { id:'T10Y3M',        name:'10Y–3M curve',                     invert:true,   freq:'d'}
+    ],
+    baseline:'Amber. Tight or inverting curves + high long rates raise crash risk via refinancing and valuation pressure.'
+  },
+  { key:'credit', name:'Credit / Stress', color:'var(--line2)',
+    series:[
+      { id:'BAMLH0A0HYM2',  name:'HY OAS',                           invert:false,  freq:'d'},
+      { id:'STLFSI4',       name:'St. Louis FSI v4',                 invert:false,  freq:'w'},
+      { id:'NFCI',          name:'Chicago Fed NFCI',                 invert:false,  freq:'w'}
+    ],
+    baseline:'Green. Credit spreads and systemic-stress gauges tend to lead equity drawdowns.'
+  },
+  { key:'liquidity', name:'Liquidity', color:'var(--line3)',
+    series:[
+      { id:'RRPONTSYD',     name:'Fed ON RRP usage',                 invert:false,  freq:'d'},
+      { id:'WALCL',         name:'Fed balance sheet (assets)',       invert:true,   freq:'w'}
+    ],
+    baseline:'Green. When bond-market depth and central-bank liquidity falter, sell-offs accelerate.'
+  },
+  { key:'usd', name:'USD / External', color:'var(--line4)',
+    series:[
+      { id:'DTWEXBGS',      name:'Trade-weighted USD (broad)',       invert:false,  freq:'d'}
+    ],
+    baseline:'Red. A strong USD tightens global financial conditions and can trigger funding squeezes.'
+  },
+  { key:'energy', name:'Energy Shock', color:'var(--line5)',
+    series:[
+      { id:'DCOILWTICO',    name:'WTI crude oil (YoY %)',            invert:false,  freq:'d', derived:'yoypct'}
+    ],
+    baseline:'Amber. Energy-burden spikes often precede recessions and earnings downgrades.'
+  },
+  { key:'household', name:'Labor / Household', color:'var(--line6)',
+    series:[
+      { id:'UNRATE',        name:'Unemployment rate',                invert:false,  freq:'m'},
+      { id:'ICSA',          name:'Initial jobless claims',           invert:false,  freq:'w'}
+    ],
+    baseline:'Green. Rising claims & household slack erode the demand buffer.'
+  },
+  { key:'activity', name:'Activity / Sentiment', color:'var(--line7)',
+    series:[
+      { id:'INDPRO',        name:'Industrial production',            invert:true,   freq:'m'},
+      { id:'RSAFS',         name:'Retail sales (advance)',           invert:true,   freq:'m'},
+      { id:'UMCSENT',       name:'UMich consumer sentiment',         invert:true,   freq:'m'}
+    ],
+    baseline:'Amber. Softening real activity and confidence raise vulnerability to shocks.'
+  }
+];
+
+// bands
+function bandOf(score){
+  if(score == null) return {name:'—', color:'#6b7280'};
+  if(score < 40) return {name:'Green', color:getComputedStyle(document.documentElement).getPropertyValue('--green').trim()};
+  if(score < 70) return {name:'Amber', color:getComputedStyle(document.documentElement).getPropertyValue('--amber').trim()};
+  return {name:'Red', color:getComputedStyle(document.documentElement).getPropertyValue('--red').trim()};
 }
-function baselineText(key){
-  switch(key){
-    case 'ratesCurve': return 'Amber. Tight or inverting curves + high long rates raise crash risk via refinancing and valuation pressure.';
-    case 'creditStress': return 'Green. Credit spreads and systemic stress tend to lead equity drawdowns.';
-    case 'liquidity': return 'Green. When bond market depth and money conditions falter, sell‑offs accelerate.';
-    case 'usdExternal': return 'Red. A strong USD tightens global financial conditions and can trigger funding squeezes.';
-    case 'energyShock': return 'Amber. Energy burden spikes often precede recessions and earnings downgrades.';
-    case 'laborHousehold': return 'Green. Rising claims and household delinquencies erode the demand buffer.';
-    case 'activitySentiment': return 'Amber. Softening real activity and confidence raise vulnerability to shocks.';
-    default: return '—';
+
+/* =========================================================
+   UTIL
+========================================================= */
+const qs = s=>document.querySelector(s);
+const toast = (msg)=>{ const t=qs('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2800); };
+
+function saveKey(){
+  const k = qs('#fredKey').value.trim();
+  localStorage.setItem('FRED_KEY', k);
+}
+
+function loadKey(){
+  const k = localStorage.getItem('FRED_KEY') || '';
+  qs('#fredKey').value = k;
+  return k;
+}
+
+// Date helpers
+const fmtDate = d => new Date(d).toISOString().slice(0,10);
+const addYears = (d, y) => { const dt = new Date(d); dt.setFullYear(dt.getFullYear()+y); return dt; };
+const toMonthKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`; };
+
+// Math
+function percentileRank(arr, val){
+  const a = arr.filter(x=>Number.isFinite(x)).sort((x,y)=>x-y);
+  if(a.length===0 || !Number.isFinite(val)) return null;
+  let idx = 0; while(idx<a.length && a[idx] <= val) idx++;
+  return Math.round(100 * idx / a.length);
+}
+
+function smooth(arr, w=3){
+  if(!arr.length) return arr;
+  const out=[]; for(let i=0;i<arr.length;i++){
+    let s=0,c=0;
+    for(let j=Math.max(0,i-w); j<=Math.min(arr.length-1,i+w); j++){ if(arr[j]!=null){s+=arr[j]; c++;} }
+    out.push(c? s/c : arr[i]);
+  } return out;
+}
+
+function minmaxNormalize(v, min, max){ if(!Number.isFinite(v)||!Number.isFinite(min)||!Number.isFinite(max)||min===max) return null; return (v-min)/(max-min); }
+
+/* =========================================================
+   FRED FETCH (with proxies + cache)
+========================================================= */
+const PROXIES = [
+  {name:'direct', wrap:u=>u}, // if CORS allowed
+  {name:'allorigins', wrap:u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`},
+  {name:'jina-http', wrap:u=>`https://r.jina.ai/http://` + u.replace(/^https?:\/\//,'')},
+  {name:'jina-https', wrap:u=>`https://r.jina.ai/` + u}
+];
+
+const CACHE = {
+  get(key){ try{ const v = JSON.parse(localStorage.getItem(key)||'null'); if(!v) return null; if(Date.now() - v.t > 6*60*60*1000) return null; return v.d; }catch{return null} },
+  set(key, data){ try{ localStorage.setItem(key, JSON.stringify({t:Date.now(), d:data})) }catch{} },
+  clear(){ Object.keys(localStorage).forEach(k=>{ if(k.startsWith('WBCI_')) localStorage.removeItem(k); }); }
+};
+
+async function fetchFRED(series_id, api_key, observation_start='2010-01-01'){
+  const cacheKey = `WBCI_${series_id}_${observation_start}`;
+  const cached = CACHE.get(cacheKey);
+  if(cached) return cached;
+
+  const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${series_id}&api_key=${api_key}&file_type=json&observation_start=${observation_start}`;
+  let lastErr = null;
+  for(const p of PROXIES){
+    try{
+      const url = p.wrap(base);
+      const res = await fetch(url, {headers: {'Accept':'application/json'}});
+      if(!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+      const txt = await res.text();
+      const json = JSON.parse(txt);
+      if(!json || !json.observations) throw new Error('Bad JSON');
+      CACHE.set(cacheKey, json);
+      return json;
+    }catch(e){ lastErr = e; /* try next proxy */ }
+  }
+  throw lastErr || new Error('All proxies failed');
+}
+
+/* =========================================================
+   CORE SCORING
+========================================================= */
+async function loadCategory(cat, apiKey){
+  const start = fmtDate(addYears(new Date(), -10)); // last 10y
+  const seriesData = [];
+  for(const s of cat.series){
+    const fred = await fetchFRED(s.id, apiKey, start);
+    // values
+    let vals = fred.observations.map(o => {
+      const v = parseFloat(o.value);
+      return Number.isFinite(v) ? v : null;
+    });
+    const dates = fred.observations.map(o => o.date);
+
+    // derived transforms
+    if(s.derived === 'yoypct'){
+      // Build monthly YoY % change
+      const byMonth = {};
+      for(let i=0;i<dates.length;i++){
+        const k = toMonthKey(dates[i]);
+        if(vals[i]!=null) byMonth[k] = vals[i];
+      }
+      const keys = Object.keys(byMonth).sort();
+      const newVals=[], newDates=[];
+      for(let i=12;i<keys.length;i++){
+        const nowK=keys[i], prevK=keys[i-12];
+        const now=byMonth[nowK], prev=byMonth[prevK];
+        if(Number.isFinite(now) && Number.isFinite(prev) && prev!==0){
+          newVals.push(100*(now-prev)/prev);
+          newDates.push(`${nowK}-01`);
+        }else{
+          newVals.push(null); newDates.push(`${nowK}-01`);
+        }
+      }
+      vals = newVals; // replace
+    }
+
+    // score = percentile of latest vs last 10y (invert if "good-high")
+    const last = [...vals].reverse().find(v=>v!=null);
+    const pct = percentileRank(vals.filter(v=>v!=null), last);
+    const score = (pct==null) ? null : (s.invert ? 100 - pct : pct);
+
+    // build 24-month spark values using fixed 10y min-max (visual, not used in WBCI)
+    const last24 = [];
+    const monthsSeen = new Set();
+    for(let i=dates.length-1;i>=0 && last24.length<24;i--){
+      const k = toMonthKey(dates[i]);
+      if(monthsSeen.has(k)) continue;
+      monthsSeen.add(k);
+      const v = vals[i];
+      last24.push(v);
+    }
+    last24.reverse();
+    const arr = vals.filter(v=>v!=null);
+    const vmin = Math.min(...arr), vmax = Math.max(...arr);
+    const spark = last24.map(v => v==null? null : minmaxNormalize(v, vmin, vmax));
+
+    seriesData.push({ id:s.id, name:s.name, score, dates, vals, spark, invert:s.invert });
+  }
+
+  // category score = weighted mean (advanced gives predictive tilt)
+  const weights = seriesData.map(sd=>{
+    // Advanced: give more weight to HY OAS, curves, unemployment, USD; cap any single series at 40% of category
+    const id = sd.id;
+    let w = 1;
+    if(['BAMLH0A0HYM2','T10Y3M','T10Y2Y','UNRATE','DTWEXBGS'].includes(id)) w = 1.5;
+    return w;
+  });
+  const cap = 0.4; // max weight share cap per series (advanced only)
+  const sumW = weights.reduce((a,b)=>a+b,0);
+  let ws = weights.map(w=>w/sumW);
+  if(qs('#mode').value === 'advanced'){
+    // cap
+    const excess = ws.reduce((ex, w)=> ex + Math.max(0, w - cap), 0);
+    if(excess>0){
+      ws = ws.map(w => Math.min(w, cap));
+      const rem = 1 - ws.reduce((a,b)=>a+b,0);
+      const pool = ws.filter(w=>w<cap).length || 1;
+      ws = ws.map(w => w<cap ? w + rem/pool : w);
+    }
+  }else{
+    ws = ws.map(_=>1/weights.length);
+  }
+
+  let catScore = 0, denom = 0;
+  seriesData.forEach((sd,i)=>{ if(sd.score!=null){ catScore += ws[i]*sd.score; denom += ws[i]; }});
+  catScore = denom>0 ? Math.round(catScore/denom) : null;
+
+  // category sparkline = average of normalized series
+  const len = Math.min(...seriesData.map(s=>s.spark.length));
+  const spark = Array.from({length:len},(_,i)=>{
+    const vals = seriesData.map(s=>s.spark[s.spark.length-len+i]).filter(v=>v!=null);
+    if(!vals.length) return null;
+    return vals.reduce((a,b)=>a+b,0)/vals.length;
+  });
+
+  return { key:cat.key, name:cat.name, baseline:cat.baseline, color:cat.color, series:seriesData, score:catScore, spark };
+}
+
+function computeMeta(categoryScores){
+  const valid = categoryScores.filter(s=>s.score!=null);
+  const score = valid.length ? Math.round(valid.reduce((a,b)=>a+b.score,0)/valid.length) : null;
+  // Breadth = share of categories with score >= 60
+  const breadth = valid.length ? Math.round(100*valid.filter(s=>s.score>=60).length/valid.length) : 0;
+  // Synchronicity = std dev of day-over-day changes (low std => synchronized). Here we proxy with rolling alignment:
+  // We compare last two spark points across categories; share with same direction as the majority.
+  let sync = 0;
+  try{
+    const dirs = valid.map(c=>{
+      const s=c.spark; if(!s || s.length<2) return 0;
+      const d=s[s.length-1]-s[s.length-2]; return d>=0 ? 1 : -1;
+    });
+    const sum = dirs.reduce((a,b)=>a+b,0);
+    const maj = sum>=0 ? 1 : -1;
+    const share = dirs.length ? dirs.filter(d=>d===maj).length/dirs.length : 0;
+    sync = Math.round(100*share);
+  }catch{ sync = 0; }
+  // Shock = average absolute change in last step * 100
+  let shock = 0;
+  try{
+    const deltas = valid.map(c=>{
+      const s=c.spark; if(!s || s.length<2) return 0;
+      return Math.abs((s[s.length-1]??0)-(s[s.length-2]??0));
+    });
+    shock = Math.round(100 * (deltas.reduce((a,b)=>a+b,0)/(deltas.length||1)));
+  }catch{ shock = 0; }
+  return {score, breadth, synch:sync, shock};
+}
+
+/* =========================================================
+   EXEC SUMMARY (CIO-STYLE, DETERMINISTIC)
+========================================================= */
+function ciSummary(meta, prevMeta, cats){
+  const band = bandOf(meta.score).name;
+  const delta = prevMeta && Number.isFinite(prevMeta.score) ? meta.score - prevMeta.score : 0;
+
+  // Leaders & cushions
+  const sorted = [...cats].sort((a,b)=> (b.score??-1) - (a.score??-1));
+  const top = sorted.slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`).join(', ');
+  const bottom = [...sorted].reverse().slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`).join(', ');
+
+  // Interpretations
+  const riskNarrow = meta.breadth < 35;
+  const movingTogether = meta.synch >= 65;
+  const fastMove = meta.shock >= 40;
+
+  const open = `WBCI ${meta.score} — ${band}${delta?` (${delta>0?'+':''}${delta} vs last run)`:''}. Breadth ${meta.breadth}% (share of pillars > Amber), Synchronicity ${meta.synch}%, Shock ${meta.shock}.`;
+  const drivers = `Main pressures: ${top}. Offsets: ${bottom}.`;
+  let interp = '';
+  if(riskNarrow && !movingTogether){
+    interp = `Risk is concentrated and not yet systemic. Co‑movement is low; deterioration is patchy.`;
+  }else if(!riskNarrow && movingTogether){
+    interp = `Risk is broadening with high co‑movement — conditions where drawdowns accelerate if stress persists.`;
+  }else if(movingTogether && fastMove){
+    interp = `Signals are moving together and doing so quickly. Crash vulnerability is elevated if this persists.`;
+  }else{
+    interp = `Signals are mixed; no single pillar dominates.`;
+  }
+
+  // stance
+  let stance = '';
+  if(meta.score < 40){
+    stance = `Constructive but selective: stay invested, favor quality balance sheets; keep light hedges.`;
+  }else if(meta.score < 70){
+    stance = `Neutral/defensive: use dips selectively; tighten risk, keep dry powder; hold macro hedges.`;
+  }else{
+    stance = `Defensive: prioritize liquidity and capital preservation; reduce beta and cyclicals; consider tail‑risk hedges.`;
+  }
+
+  // watchlist rules
+  const want = [];
+  const catMap = Object.fromEntries(cats.map(c=>[c.key, c]));
+  if((catMap.rates?.score??0) >= 60) want.push('front‑anchored curve steepening (10Y–3M ↑ while front end stable)');
+  if((catMap.credit?.score??0) <= 50) want.push('clear HY OAS and systemic‑stress widening');
+  if((catMap.household?.score??0) <= 55) want.push('persistent rise in weekly claims confirming softer labor');
+  if((catMap.usd?.score??0) >= 60) want.push('further USD strength tightening global conditions');
+  if((catMap.energy?.score??0) >= 60) want.push('energy‑burden spike pressuring margins and demand');
+
+  const watch = `Watch next: ${want.length? want.map((x,i)=>`${i+1}) ${x}`).join(', ') : 'no single trigger; monitor breadth & synchronicity for broadening.'}`;
+
+  return [
+    `<p><b>${open}</b></p>`,
+    `<p>${drivers}</p>`,
+    `<p>${interp} Momentum ${meta.shock<15 ? 'is calm' : (meta.shock<40? 'is turning' : 'is fast‑worsening')}.</p>`,
+    `<p><b>Portfolio stance:</b> ${stance}</p>`,
+    `<p class="small muted">${watch}</p>`
+  ].join('');
+}
+
+/* =========================================================
+   RENDERING
+========================================================= */
+function setDonut(score){
+  const arc = qs('#arc'), num=qs('#scoreNum'), bandChip=qs('#scoreBand');
+  const C = 2*Math.PI*46; // circumference
+  const pct = Math.max(0, Math.min(100, Number(score)||0));
+  arc.setAttribute('stroke-dasharray', `${C} ${C}`);
+  arc.setAttribute('stroke-dashoffset', String(C * (1 - pct/100)));
+  const b = bandOf(score);
+  arc.setAttribute('stroke', b.color);
+  num.textContent = Number.isFinite(score) ? score : '--';
+  bandChip.textContent = `WBCI: ${Number.isFinite(score)?score:'--'} — ${b.name}`;
+  bandChip.style.background = '#2a2115';
+  bandChip.style.border = '1px solid #4a3a1c';
+}
+
+function renderMeta(meta, loadedCount){
+  qs('#badgeBand').textContent = `Band: ${bandOf(meta.score).name}`;
+  qs('#badgeBreadth').textContent = `Breadth: ${meta.breadth}%`;
+  qs('#badgeSync').textContent = `Synchronicity: ${meta.synch}%`;
+  qs('#badgeShock').textContent = `Shock: ${meta.shock}`;
+  qs('#runMeta').textContent = `Last run: ${new Date().toLocaleString()} • Mode: ${qs('#mode').value} • Categories loaded: ${loadedCount}/${CATEGORIES.length}`;
+  setDonut(meta.score);
+}
+
+function drawSpark(canvas, values, color){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = canvas.clientWidth*2;
+  const h = canvas.height= (canvas.clientHeight||120)*2;
+  ctx.scale(2,2);
+  // axes
+  ctx.strokeStyle = 'rgba(180,200,220,0.15)';
+  ctx.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const y = 10 + i*((h/2-20)/4);
+    ctx.beginPath(); ctx.moveTo(36,y); ctx.lineTo(w/2-10,y); ctx.stroke();
+  }
+  // y labels (0..1)
+  ctx.fillStyle='#8fa5bb'; ctx.font='11px Inter, system-ui';
+  ctx.fillText('1.0',6,14); ctx.fillText('0.0',6,(h/2)-10);
+  // x axis
+  ctx.beginPath(); ctx.moveTo(36,(h/2)-20); ctx.lineTo(w/2-10,(h/2)-20); ctx.stroke();
+
+  const vals = values.map(v => v==null?null:Math.max(0,Math.min(1,v)));
+  const n = vals.length || 2;
+  const xscale = (w/2-50)/(n-1);
+  const yscale = (h/2-40);
+  ctx.lineWidth=2.4; ctx.strokeStyle=color; ctx.beginPath();
+  let started=false;
+  vals.forEach((v,i)=>{
+    if(v==null) return;
+    const x = 36 + i*xscale;
+    const y = 10 + (1-v)*yscale;
+    if(!started){ ctx.moveTo(x,y); started=true; }
+    else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+function categoryCard(cat){
+  const band = bandOf(cat.score).name;
+  return `
+    <div class="col-12 col-6 cat">
+      <div class="head">
+        <div style="font-weight:800">${cat.name}</div>
+        <div class="score-pill">${cat.score==null?'—':cat.score}</div>
+      </div>
+      <div class="spark"><canvas id="cv_${cat.key}" height="120"></canvas></div>
+      <div class="legend"></div>
+      <div class="foot"><b>Baseline:</b> ${cat.baseline}</div>
+      <div class="small muted" style="margin-top:6px">Band: ${band}</div>
+    </div>
+  `;
+}
+
+/* =========================================================
+   MAIN RUNNER
+========================================================= */
+let prevMeta = null;
+
+async function run(){
+  qs('#runBtn').disabled = true;
+  saveKey();
+  const apiKey = loadKey();
+  if(!apiKey){ toast('Paste your FRED API key first.'); qs('#runBtn').disabled=false; return; }
+
+  const startTs = performance.now();
+  try{
+    // load categories in sequence (mobile‑safe) — you can parallelize if you want to push harder
+    const cats = [];
+    for(const cfg of CATEGORIES){
+      const c = await loadCategory(cfg, apiKey);
+      cats.push(c);
+      // progressive render
+      qs('#cats').insertAdjacentHTML('beforeend', categoryCard(c));
+      drawSpark(qs(`#cv_${c.key}`), c.spark, getComputedStyle(document.documentElement).getPropertyValue('--line1'));
+    }
+
+    // compute meta
+    const meta = computeMeta(cats);
+    renderMeta(meta, cats.length);
+    qs('#exec').innerHTML = ciSummary(meta, prevMeta, cats);
+    prevMeta = meta;
+
+    const ms = Math.round(performance.now()-startTs);
+    toast(`Run complete in ${ms}ms`);
+  }catch(e){
+    console.error(e);
+    toast(`Error: ${e.message||e}`);
+    qs('#exec').innerHTML = `<p class="risk">Load error. Check API key / network. Try again.</p>`;
+  }finally{
+    qs('#runBtn').disabled=false;
   }
 }
 
-// ---- buttons ----
-$('runBtn').addEventListener('click', run);
-$('resetBtn').addEventListener('click', ()=>{
-  localStorage.removeItem('wbci_last_score');
-  $('exec-summary').textContent = 'Cache cleared. Run again to refresh.';
-});
-
-// Auto-run on first load
-run();
+/* =========================================================
+   INIT + EVENTS
+========================================================= */
+loadKey();
+qs('#runBtn').addEventListener('click', async()=>{ qs('#cats').innerHTML=''; await run(); });
+qs('#resetBtn').addEventListener('click', ()=>{ CACHE.clear(); toast('Local cache cleared.'); });
 </script>
 </body>
 </html>
