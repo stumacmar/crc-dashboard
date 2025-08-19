@@ -1,576 +1,526 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Marshall WBCI — World’s Best Crash Indicator</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0f1720; --panel:#121c26; --muted:#a7b4c4; --text:#e8f0f9;
-    --chip:#1b2835; --amber:#f5a623; --green:#22c55e; --red:#ef4444;
-    --line1:#ffb020; --line2:#22d3ee; --line3:#60a5fa; --line4:#34d399; --line5:#f472b6; --line6:#f59e0b; --line7:#a78bfa;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:var(--text);background:linear-gradient(180deg,#0e1620,#0a1218);}
-  .wrap{max-width:1100px;margin:0 auto;padding:24px}
-  h1{font-size:clamp(22px,3.4vw,38px);line-height:1.15;margin:0 0 14px}
-  .row{display:flex;flex-wrap:wrap;gap:12px}
-  .panel{background:var(--panel);border-radius:16px;padding:16px;box-shadow:0 1px 0 #0a1016 inset,0 0 0 1px #0d1722}
-  .toolbar .box{flex:1 1 260px}
-  input,select,button,textarea{font:inherit}
-  input[type=text],select{width:100%;background:#0c141c;border:1px solid #192734;border-radius:12px;color:var(--text);padding:12px}
-  button.primary{background:#3b82f6;border:none;color:white;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
-  button.secondary{background:#1f2b36;border:1px solid #2a3a47;color:#cfe2f5;border-radius:12px;padding:12px 16px;font-weight:600;cursor:pointer}
-  button:disabled{opacity:.6;cursor:not-allowed}
-  .scorecard{display:grid;grid-template-columns:110px 1fr;gap:14px;align-items:center}
-  .donut{position:relative;width:110px;height:110px}
-  .donut svg{transform:rotate(-90deg)}
-  .donut .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px}
-  .badges{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{background:var(--chip);padding:8px 10px;border-radius:999px;color:#d7e7f8;border:1px solid #1c2a36;font-weight:600}
-  .sub{color:var(--muted);font-size:14px}
-  h2{margin:8px 0 10px}
-  .exec{line-height:1.55;font-size:16px}
-  .exec p{margin:8px 0}
-  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
-  .col-12{grid-column:span 12}
-  .col-6{grid-column:span 12}
-  .col-4{grid-column:span 12}
-  @media(min-width:720px){ .col-6{grid-column:span 6} .col-4{grid-column:span 4} }
-  .cat{position:relative}
-  .cat .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-  .score-pill{background:#09121a;border:1px solid #172433;padding:4px 10px;border-radius:999px;font-weight:700}
-  .spark{background:#0c151e;border:1px solid #182634;border-radius:12px;padding:10px;position:relative}
-  .spark canvas{width:100%;height:120px}
-  .legend{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--green),#f59e0b,var(--red));margin:8px 0}
-  .foot{color:#c4d2e2;font-size:14px}
-  .muted{opacity:.85}
-  .small{font-size:13px;color:#a9b9ca}
-  .ok{color:var(--green)} .warn{color:var(--amber)} .risk{color:var(--red)}
-  .footer{margin:18px 0 10px;text-align:center;color:#a7b4c4;font-size:12px}
-  .toast{position:fixed;right:12px;bottom:12px;background:#10202b;border:1px solid #1d3344;color:#d7ecff;padding:10px 12px;border-radius:10px;font-size:14px;display:none}
-  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;background:#0a1218;border:1px solid #1a2835;border-radius:6px;padding:0 6px}
+:root{
+  --bg:#0f1722; --panel:#111c27; --edge:#1b2c3d; --ink:#e8f0fa; --muted:#9fb0c6;
+  --chip:#162334; --chipTxt:#d7e5f6;
+  --green:#22c55e; --amber:#ffb020; --red:#ef4444; --blue:#3b82f6;
+  --line1:#ffb020; --line2:#22d3ee; --line3:#60a5fa; --line4:#34d399; --line5:#f472b6; --line6:#f59e0b; --line7:#a78bfa;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:linear-gradient(180deg,#0d1722,#0b1320);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 16px}
+h1{margin:0 0 14px;font-size:clamp(22px,3.4vw,36px);line-height:1.15}
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:16px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,button{font:inherit}
+input[type=text],select{background:#0b1620;border:1px solid #1c2a3c;color:var(--ink);padding:12px;border-radius:12px}
+input[type=text]{flex:1 1 300px}
+button{border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
+button.primary{background:var(--blue);color:#fff}
+button.secondary{background:#1c2a38;color:#cfe4ff;border:1px solid #2a3a4a}
+button:disabled{opacity:.6;cursor:not-allowed}
+
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:860px){.grid{grid-template-columns:1.1fr 2fr}}
+
+.kv{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--chip);border:1px solid #223448;color:var(--chipTxt);padding:7px 10px;border-radius:999px;font-weight:700;font-size:13px}
+
+.donut{position:relative;width:150px;height:150px}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut .num{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:34px}
+
+.small{font-size:13px;color:var(--muted)}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:860px){.cards{grid-template-columns:1fr 1fr}}
+.card{background:#0b1620;border:1px solid #1b2a3c;border-radius:14px;padding:12px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.badge{background:#0c1928;border:1px solid #23334a;color:#cfe0f8;padding:4px 10px;border-radius:999px;font-weight:800}
+.legend{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));opacity:.9;margin:6px 0}
+.caption{font-size:14px;color:#cbd9ee;margin-top:6px}
+.note{font-size:13px;color:#a8b9cf;margin-top:6px}
+
+.focus{margin-top:4px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.btns button{padding:6px 10px;border-radius:999px;background:#132233;border:1px solid #25364a;color:#cfe2ff;font-weight:700}
+
+.toast{position:fixed;right:12px;bottom:12px;background:#10202b;border:1px solid #1d3344;color:#d7ecff;padding:10px 12px;border-radius:10px;font-size:14px;display:none;z-index:10}
+.footer{margin:14px 0 8px;text-align:center;color:#a7b4c4;font-size:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Marshall WBCI — World’s Best Crash Indicator</h1>
 
-  <!-- TOOLBAR -->
-  <div class="row toolbar">
-    <div class="panel box">
-      <label class="small">FRED API key (saved locally)</label>
-      <input id="fredKey" type="text" placeholder="paste your FRED API key" />
-    </div>
-    <div class="panel box">
-      <label class="small">Weighting mode</label>
+  <div class="panel">
+    <div class="row">
+      <input id="fredKey" type="text" placeholder="Paste your FRED API key (required)"/>
       <select id="mode">
-        <option value="advanced">Advanced (predictive tilt + category caps)</option>
+        <option value="advanced">Advanced (predictive tilt + caps)</option>
         <option value="equal">Equal weighting</option>
       </select>
-    </div>
-    <div class="panel box" style="display:flex;gap:8px;align-items:flex-end">
-      <button id="runBtn" class="primary" style="flex:1">Run / Refresh</button>
+      <button id="runBtn" class="primary">Run / Refresh</button>
       <button id="resetBtn" class="secondary">Reset Cache</button>
+      <div id="msg" class="small" style="margin-left:auto"></div>
     </div>
   </div>
 
-  <!-- SCORE CARD -->
-  <div class="panel scorecard" id="scorePanel">
-    <div class="donut" aria-label="WBCI score">
-      <svg width="110" height="110">
-        <circle cx="55" cy="55" r="46" fill="none" stroke="#1a2733" stroke-width="12"></circle>
-        <circle id="arc" cx="55" cy="55" r="46" fill="none" stroke="#f5a623" stroke-linecap="round" stroke-width="12" stroke-dasharray="289 289" stroke-dashoffset="289"></circle>
-      </svg>
-      <div class="num" id="scoreNum">--</div>
-    </div>
-    <div>
-      <div id="scoreBand" class="chip" style="margin-bottom:8px">WBCI: --</div>
-      <div class="sub" id="scoreExpl">Composite = average of category risk percentiles vs their own last decade (with sensible inverts).</div>
-      <div style="margin-top:10px" class="badges">
-        <div class="chip" id="badgeBand">Band: —</div>
-        <div class="chip" id="badgeBreadth">Breadth: —</div>
-        <div class="chip" id="badgeSync">Synchronicity: —</div>
-        <div class="chip" id="badgeShock">Shock: —</div>
+  <div class="grid">
+    <div class="panel">
+      <div class="row" style="align-items:center">
+        <div class="donut">
+          <svg viewBox="0 0 120 120" aria-label="WBCI gauge">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#0c1a28" stroke-width="12"></circle>
+            <circle id="arc" cx="60" cy="60" r="50" fill="none" stroke="#ffb020" stroke-width="12" stroke-linecap="round"
+                    stroke-dasharray="314 314" stroke-dashoffset="314"></circle>
+          </svg>
+          <div class="num" id="scoreNum">--</div>
+        </div>
+        <div style="min-width:260px;flex:1">
+          <div id="bandChip" class="chip">WBCI: --</div>
+          <p class="small" id="scoreExpl" style="margin:6px 0 6px">
+            Percentile‑based: each pillar is ranked vs its own last 10 years (inverted where “high = good”), so higher = riskier.
+          </p>
+          <div class="kv">
+            <div class="chip" id="kvBand">Band: —</div>
+            <div class="chip" id="kvBreadth">Breadth: —</div>
+            <div class="chip" id="kvSync">Synchronicity: —</div>
+            <div class="chip" id="kvShock">Shock: —</div>
+          </div>
+          <div class="small" id="runMeta" style="margin-top:6px">—</div>
+        </div>
       </div>
-      <div class="small muted" id="runMeta" style="margin-top:8px">—</div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 6px">Executive Summary</h2>
+      <div id="exec" style="line-height:1.55">Paste your FRED key and press Run.</div>
     </div>
   </div>
 
-  <!-- EXEC SUMMARY -->
   <div class="panel">
-    <h2>Executive Summary</h2>
-    <div class="exec" id="exec"></div>
+    <h2 style="margin:0 0 6px">Categories</h2>
+    <div id="cards" class="cards"></div>
   </div>
 
-  <!-- CATEGORIES -->
-  <div class="panel">
-    <h2>Categories</h2>
-    <div class="grid" id="cats"></div>
+  <div class="panel focus">
+    <h2 style="margin:0 0 6px">Focus Chart</h2>
+    <div id="focusChart" style="height:240px"></div>
+    <div class="btns" id="focusBtns"></div>
   </div>
 
-  <div class="footer">Marshall WBCI • Built on public FRED data • No guarantees; informational only.</div>
+  <div class="footer">Marshall WBCI • Live FRED data • Deterministic scoring • Mobile‑first charts</div>
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- TradingView Lightweight Charts -->
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <script>
-/* =========================================================
-   CONFIG
-========================================================= */
-const CATEGORIES = [
-  { key:'rates', name:'Rates / Curve', color:'var(--line1)',
-    series:[
-      { id:'DGS10',         name:'10Y Treasury yield',              invert:false,  freq:'d'},
-      { id:'T10Y2Y',        name:'10Y–2Y curve',                     invert:true,   freq:'d'},
-      { id:'T10Y3M',        name:'10Y–3M curve',                     invert:true,   freq:'d'}
-    ],
-    baseline:'Amber. Tight or inverting curves + high long rates raise crash risk via refinancing and valuation pressure.'
-  },
-  { key:'credit', name:'Credit / Stress', color:'var(--line2)',
-    series:[
-      { id:'BAMLH0A0HYM2',  name:'HY OAS',                           invert:false,  freq:'d'},
-      { id:'STLFSI4',       name:'St. Louis FSI v4',                 invert:false,  freq:'w'},
-      { id:'NFCI',          name:'Chicago Fed NFCI',                 invert:false,  freq:'w'}
-    ],
-    baseline:'Green. Credit spreads and systemic-stress gauges tend to lead equity drawdowns.'
-  },
-  { key:'liquidity', name:'Liquidity', color:'var(--line3)',
-    series:[
-      { id:'RRPONTSYD',     name:'Fed ON RRP usage',                 invert:false,  freq:'d'},
-      { id:'WALCL',         name:'Fed balance sheet (assets)',       invert:true,   freq:'w'}
-    ],
-    baseline:'Green. When bond-market depth and central-bank liquidity falter, sell-offs accelerate.'
-  },
-  { key:'usd', name:'USD / External', color:'var(--line4)',
-    series:[
-      { id:'DTWEXBGS',      name:'Trade-weighted USD (broad)',       invert:false,  freq:'d'}
-    ],
-    baseline:'Red. A strong USD tightens global financial conditions and can trigger funding squeezes.'
-  },
-  { key:'energy', name:'Energy Shock', color:'var(--line5)',
-    series:[
-      { id:'DCOILWTICO',    name:'WTI crude oil (YoY %)',            invert:false,  freq:'d', derived:'yoypct'}
-    ],
-    baseline:'Amber. Energy-burden spikes often precede recessions and earnings downgrades.'
-  },
-  { key:'household', name:'Labor / Household', color:'var(--line6)',
-    series:[
-      { id:'UNRATE',        name:'Unemployment rate',                invert:false,  freq:'m'},
-      { id:'ICSA',          name:'Initial jobless claims',           invert:false,  freq:'w'}
-    ],
-    baseline:'Green. Rising claims & household slack erode the demand buffer.'
-  },
-  { key:'activity', name:'Activity / Sentiment', color:'var(--line7)',
-    series:[
-      { id:'INDPRO',        name:'Industrial production',            invert:true,   freq:'m'},
-      { id:'RSAFS',         name:'Retail sales (advance)',           invert:true,   freq:'m'},
-      { id:'UMCSENT',       name:'UMich consumer sentiment',         invert:true,   freq:'m'}
-    ],
-    baseline:'Amber. Softening real activity and confidence raise vulnerability to shocks.'
-  }
-];
-
-// bands
-function bandOf(score){
-  if(score == null) return {name:'—', color:'#6b7280'};
-  if(score < 40) return {name:'Green', color:getComputedStyle(document.documentElement).getPropertyValue('--green').trim()};
-  if(score < 70) return {name:'Amber', color:getComputedStyle(document.documentElement).getPropertyValue('--amber').trim()};
-  return {name:'Red', color:getComputedStyle(document.documentElement).getPropertyValue('--red').trim()};
-}
-
-/* =========================================================
-   UTIL
-========================================================= */
+/* ===================== Utilities & Style ===================== */
 const qs = s=>document.querySelector(s);
-const toast = (msg)=>{ const t=qs('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2800); };
-
-function saveKey(){
-  const k = qs('#fredKey').value.trim();
-  localStorage.setItem('FRED_KEY', k);
+const toast = (t)=>{const el=qs('#toast'); el.textContent=t; el.style.display='block'; setTimeout(()=>el.style.display='none',2600);};
+const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+const bandOf=s=> s==null?{name:'—',color:'#6b7280'} : s<40?{name:'Green',color:getVar('--green')} : s<70?{name:'Amber',color:getVar('--amber')} : {name:'Red',color:getVar('--red')};
+const getVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const monthKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`; };
+const uniq = a => [...new Set(a)];
+const mean = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;
+const stdev = a => { if(a.length<2) return 1; const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)*(v-m))))||1; };
+function percentileRanks(arr){ // returns function(val)->0..100
+  const xs = arr.filter(v=>Number.isFinite(v)).slice().sort((a,b)=>a-b);
+  return (v)=>{ if(!Number.isFinite(v)||!xs.length) return null; let lo=0,hi=xs.length; while(lo<hi){const m=(lo+hi>>1); xs[m]<=v?lo=m+1:hi=m;} return Math.round(100*lo/xs.length); };
 }
 
-function loadKey(){
-  const k = localStorage.getItem('FRED_KEY') || '';
-  qs('#fredKey').value = k;
-  return k;
-}
-
-// Date helpers
-const fmtDate = d => new Date(d).toISOString().slice(0,10);
-const addYears = (d, y) => { const dt = new Date(d); dt.setFullYear(dt.getFullYear()+y); return dt; };
-const toMonthKey = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`; };
-
-// Math
-function percentileRank(arr, val){
-  const a = arr.filter(x=>Number.isFinite(x)).sort((x,y)=>x-y);
-  if(a.length===0 || !Number.isFinite(val)) return null;
-  let idx = 0; while(idx<a.length && a[idx] <= val) idx++;
-  return Math.round(100 * idx / a.length);
-}
-
-function smooth(arr, w=3){
-  if(!arr.length) return arr;
-  const out=[]; for(let i=0;i<arr.length;i++){
-    let s=0,c=0;
-    for(let j=Math.max(0,i-w); j<=Math.min(arr.length-1,i+w); j++){ if(arr[j]!=null){s+=arr[j]; c++;} }
-    out.push(c? s/c : arr[i]);
-  } return out;
-}
-
-function minmaxNormalize(v, min, max){ if(!Number.isFinite(v)||!Number.isFinite(min)||!Number.isFinite(max)||min===max) return null; return (v-min)/(max-min); }
-
-/* =========================================================
-   FRED FETCH (with proxies + cache)
-========================================================= */
-const PROXIES = [
-  {name:'direct', wrap:u=>u}, // if CORS allowed
-  {name:'allorigins', wrap:u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`},
-  {name:'jina-http', wrap:u=>`https://r.jina.ai/http://` + u.replace(/^https?:\/\//,'')},
-  {name:'jina-https', wrap:u=>`https://r.jina.ai/` + u}
+/* ===================== Config ===================== */
+const CATS = [
+  {key:'rates', name:'Rates / Curve', color:getVar('--line1'), why:'Tight or inverted curves + high long rates raise crash risk via refinancing and valuation pressure.',
+    series:[
+      {id:'DGS10',    name:'10Y Treasury yield',        invert:false, freq:'d'},
+      {id:'T10Y2Y',   name:'10Y–2Y curve',              invert:true,  freq:'d'},
+      {id:'T10Y3M',   name:'10Y–3M curve',              invert:true,  freq:'d'}
+    ]},
+  {key:'credit', name:'Credit / Stress', color:getVar('--line2'), why:'Credit spreads and systemic stress tend to lead equity drawdowns.',
+    series:[
+      {id:'BAMLH0A0HYM2', name:'HY OAS',               invert:false, freq:'d'},
+      {id:'STLFSI4',      name:'St. Louis FSI v4',     invert:false, freq:'w'},
+      {id:'NFCI',         name:'Chicago Fed NFCI',     invert:false, freq:'w'}
+    ]},
+  {key:'liquidity', name:'Liquidity', color:getVar('--line3'), why:'When market depth/CB liquidity fade, sell‑offs accelerate.',
+    series:[
+      {id:'RRPONTSYD',    name:'Fed ON RRP usage',      invert:false, freq:'d'},
+      {id:'WALCL',        name:'Fed balance sheet',     invert:true,  freq:'w'}
+    ]},
+  {key:'usd', name:'USD / External', color:getVar('--line4'), why:'A strong USD tightens global financial conditions and can trigger funding squeezes.',
+    series:[{id:'DTWEXBGS', name:'Broad trade‑weighted USD', invert:false, freq:'d'}]},
+  {key:'energy', name:'Energy Shock', color:getVar('--line5'), why:'Energy burden spikes often precede recessions and earnings downgrades.',
+    series:[{id:'DCOILWTICO', name:'WTI crude (YoY %)', invert:false, freq:'d', derived:'yoypct'}]},
+  {key:'house', name:'Labor / Household', color:getVar('--line6'), why:'Rising claims & slack erode the demand buffer.',
+    series:[
+      {id:'UNRATE', name:'Unemployment rate',          invert:false, freq:'m'},
+      {id:'ICSA',   name:'Initial jobless claims',     invert:false, freq:'w'}
+    ]},
+  {key:'activity', name:'Activity / Sentiment', color:getVar('--line7'), why:'Softening activity & confidence increase vulnerability to shocks.',
+    series:[
+      {id:'INDPRO',  name:'Industrial production',     invert:true,  freq:'m'},
+      {id:'RSAFS',   name:'Retail sales (advance)',    invert:true,  freq:'m'},
+      {id:'UMCSENT', name:'UMich consumer sentiment',  invert:true,  freq:'m'}
+    ]}
 ];
+const ADV_WEIGHTS = { // predictive tilt (capped per series later)
+  DGS10:1.2, T10Y2Y:1.4, T10Y3M:1.5,
+  BAMLH0A0HYM2:1.6, STLFSI4:1.3, NFCI:1.2,
+  RRPONTSYD:1.1, WALCL:1.0,
+  DTWEXBGS:1.4,
+  DCOILWTICO:1.2,
+  UNRATE:1.4, ICSA:1.3,
+  INDPRO:1.0, RSAFS:1.0, UMCSENT:1.1
+};
+const SERIES_CAP = 0.45; // max share of a category by any single series (advanced mode)
 
+/* ===================== Cache & Fetch ===================== */
 const CACHE = {
-  get(key){ try{ const v = JSON.parse(localStorage.getItem(key)||'null'); if(!v) return null; if(Date.now() - v.t > 6*60*60*1000) return null; return v.d; }catch{return null} },
-  set(key, data){ try{ localStorage.setItem(key, JSON.stringify({t:Date.now(), d:data})) }catch{} },
+  get(k){ try{const v=JSON.parse(localStorage.getItem(k)||'null'); if(!v) return null; if(Date.now()-v.t>6*60*60*1000) return null; return v.d;}catch{return null}},
+  set(k,d){ try{localStorage.setItem(k,JSON.stringify({t:Date.now(),d}))}catch{} },
   clear(){ Object.keys(localStorage).forEach(k=>{ if(k.startsWith('WBCI_')) localStorage.removeItem(k); }); }
 };
+const PROXIES = [
+  u=>u,
+  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u=>`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
+  u=>`https://r.jina.ai/http://`+u.replace(/^https?:\/\//,'')
+];
 
-async function fetchFRED(series_id, api_key, observation_start='2010-01-01'){
+async function fetchFRED(series_id, api_key, observation_start){
   const cacheKey = `WBCI_${series_id}_${observation_start}`;
-  const cached = CACHE.get(cacheKey);
-  if(cached) return cached;
-
+  const hit = CACHE.get(cacheKey); if(hit) return hit;
   const base = `https://api.stlouisfed.org/fred/series/observations?series_id=${series_id}&api_key=${api_key}&file_type=json&observation_start=${observation_start}`;
-  let lastErr = null;
-  for(const p of PROXIES){
+  let lastErr=null;
+  for(const wrap of PROXIES){
     try{
-      const url = p.wrap(base);
-      const res = await fetch(url, {headers: {'Accept':'application/json'}});
-      if(!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+      const res = await fetch(wrap(base), {headers:{'Accept':'application/json'}});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const txt = await res.text();
       const json = JSON.parse(txt);
-      if(!json || !json.observations) throw new Error('Bad JSON');
+      if(!json || !Array.isArray(json.observations)) throw new Error('Bad JSON');
       CACHE.set(cacheKey, json);
       return json;
-    }catch(e){ lastErr = e; /* try next proxy */ }
+    }catch(e){ lastErr=e; }
   }
-  throw lastErr || new Error('All proxies failed');
+  throw lastErr||new Error('All proxies failed');
 }
 
-/* =========================================================
-   CORE SCORING
-========================================================= */
-async function loadCategory(cat, apiKey){
-  const start = fmtDate(addYears(new Date(), -10)); // last 10y
-  const seriesData = [];
-  for(const s of cat.series){
-    const fred = await fetchFRED(s.id, apiKey, start);
-    // values
-    let vals = fred.observations.map(o => {
-      const v = parseFloat(o.value);
-      return Number.isFinite(v) ? v : null;
-    });
-    const dates = fred.observations.map(o => o.date);
-
-    // derived transforms
-    if(s.derived === 'yoypct'){
-      // Build monthly YoY % change
-      const byMonth = {};
-      for(let i=0;i<dates.length;i++){
-        const k = toMonthKey(dates[i]);
-        if(vals[i]!=null) byMonth[k] = vals[i];
-      }
-      const keys = Object.keys(byMonth).sort();
-      const newVals=[], newDates=[];
-      for(let i=12;i<keys.length;i++){
-        const nowK=keys[i], prevK=keys[i-12];
-        const now=byMonth[nowK], prev=byMonth[prevK];
-        if(Number.isFinite(now) && Number.isFinite(prev) && prev!==0){
-          newVals.push(100*(now-prev)/prev);
-          newDates.push(`${nowK}-01`);
-        }else{
-          newVals.push(null); newDates.push(`${nowK}-01`);
-        }
-      }
-      vals = newVals; // replace
-    }
-
-    // score = percentile of latest vs last 10y (invert if "good-high")
-    const last = [...vals].reverse().find(v=>v!=null);
-    const pct = percentileRank(vals.filter(v=>v!=null), last);
-    const score = (pct==null) ? null : (s.invert ? 100 - pct : pct);
-
-    // build 24-month spark values using fixed 10y min-max (visual, not used in WBCI)
-    const last24 = [];
-    const monthsSeen = new Set();
-    for(let i=dates.length-1;i>=0 && last24.length<24;i--){
-      const k = toMonthKey(dates[i]);
-      if(monthsSeen.has(k)) continue;
-      monthsSeen.add(k);
-      const v = vals[i];
-      last24.push(v);
-    }
-    last24.reverse();
-    const arr = vals.filter(v=>v!=null);
-    const vmin = Math.min(...arr), vmax = Math.max(...arr);
-    const spark = last24.map(v => v==null? null : minmaxNormalize(v, vmin, vmax));
-
-    seriesData.push({ id:s.id, name:s.name, score, dates, vals, spark, invert:s.invert });
+/* ===================== Transforms ===================== */
+function toMonthly(observations, derived){
+  // Map last value per month (safer for mixed freq)
+  const map = new Map();
+  for(const o of observations){
+    const v = (o.value==='.'? null : +o.value);
+    if(!Number.isFinite(v)) continue;
+    const mk = monthKey(o.date);
+    map.set(mk, v); // last in month wins
   }
+  let arr = [...map.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,v])=>({t:k+'-01', v}));
 
-  // category score = weighted mean (advanced gives predictive tilt)
-  const weights = seriesData.map(sd=>{
-    // Advanced: give more weight to HY OAS, curves, unemployment, USD; cap any single series at 40% of category
-    const id = sd.id;
-    let w = 1;
-    if(['BAMLH0A0HYM2','T10Y3M','T10Y2Y','UNRATE','DTWEXBGS'].includes(id)) w = 1.5;
-    return w;
+  if(derived==='yoypct'){
+    const out=[];
+    for(let i=12;i<arr.length;i++){
+      const prev = arr[i-12].v; const cur = arr[i].v;
+      out.push({t:arr[i].t, v: (Number.isFinite(prev)&&prev!==0)? 100*(cur-prev)/prev : null});
+    }
+    arr = out;
+  }
+  return arr.filter(p=>Number.isFinite(p.v));
+}
+
+function seriesPercentiles(monthly, invert){
+  if(!monthly.length) return {latest:null, series:[]};
+  const vals = monthly.map(p=>p.v);
+  const pr = percentileRanks(vals);
+  const series = monthly.map(p=>{
+    let s = pr(p.v);
+    if(s==null) return {t:p.t, s:null};
+    if(invert) s = 100-s;
+    return {t:p.t, s:clamp(s)};
   });
-  const cap = 0.4; // max weight share cap per series (advanced only)
-  const sumW = weights.reduce((a,b)=>a+b,0);
-  let ws = weights.map(w=>w/sumW);
-  if(qs('#mode').value === 'advanced'){
-    // cap
-    const excess = ws.reduce((ex, w)=> ex + Math.max(0, w - cap), 0);
+  const latest = series.at(-1)?.s ?? null;
+  return {latest, series};
+}
+
+/* ===================== Category Load & Score ===================== */
+async function loadCategory(cfg, apiKey, start){
+  const series = [];
+  for(const s of cfg.series){
+    const raw = await fetchFRED(s.id, apiKey, start);
+    const monthly = toMonthly(raw.observations, s.derived);
+    const pct = seriesPercentiles(monthly, s.invert);
+    series.push({ meta:s, monthly, pctSeries:pct.series, latest:pct.latest });
+  }
+  // Align percentiles by month across series & build category series (avg of series)
+  const months = uniq(series.flatMap(s=>s.pctSeries.map(p=>p.t))).sort();
+  const catSeries = months.map(t=>{
+    const pts = series.map(s=> s.pctSeries.find(p=>p.t===t)?.s).filter(v=>v!=null);
+    return {t, s: pts.length? Math.round(mean(pts)) : null};
+  }).filter(p=>p.s!=null);
+
+  // Category score (latest)
+  const latest = catSeries.at(-1)?.s ?? null;
+
+  // Advanced vs equal weighting at series level for *latest*
+  let weights = series.map(s=> (ADV_WEIGHTS[s.meta.id]||1));
+  if(qs('#mode').value==='equal'){
+    weights = weights.map(_=>1);
+  }else{
+    // cap any single series
+    const sum = weights.reduce((a,b)=>a+b,0);
+    let ws = weights.map(w=>w/sum);
+    // cap pass
+    let excess = 0;
+    ws = ws.map(w=>{ if(w>SERIES_CAP){ excess+=w-SERIES_CAP; return SERIES_CAP; } return w; });
     if(excess>0){
-      ws = ws.map(w => Math.min(w, cap));
-      const rem = 1 - ws.reduce((a,b)=>a+b,0);
-      const pool = ws.filter(w=>w<cap).length || 1;
-      ws = ws.map(w => w<cap ? w + rem/pool : w);
+      const eligibleIdx = ws.map((w,i)=> w<SERIES_CAP ? i : -1).filter(i=>i>=0);
+      const add = excess/(eligibleIdx.length||1);
+      ws = ws.map((w,i)=> eligibleIdx.includes(i) ? w+add : w);
     }
+    weights = ws;
+  }
+  const latestBySeries = series.map(s=>s.latest).filter(v=>v!=null);
+  let catScore = null;
+  if(latestBySeries.length){
+    const num = series.reduce((acc,s,idx)=> acc + (s.latest!=null ? weights[idx]*s.latest : 0), 0);
+    const den = series.reduce((acc,_s,idx)=> acc + weights[idx]*(series[idx].latest!=null?1:0), 0);
+    catScore = den>0 ? Math.round(num/den) : null;
   }else{
-    ws = ws.map(_=>1/weights.length);
+    catScore = latest;
   }
 
-  let catScore = 0, denom = 0;
-  seriesData.forEach((sd,i)=>{ if(sd.score!=null){ catScore += ws[i]*sd.score; denom += ws[i]; }});
-  catScore = denom>0 ? Math.round(catScore/denom) : null;
+  return {
+    key:cfg.key, name:cfg.name, why:cfg.why, color:cfg.color,
+    score:catScore, series, catSeries
+  };
+}
 
-  // category sparkline = average of normalized series
-  const len = Math.min(...seriesData.map(s=>s.spark.length));
-  const spark = Array.from({length:len},(_,i)=>{
-    const vals = seriesData.map(s=>s.spark[s.spark.length-len+i]).filter(v=>v!=null);
-    if(!vals.length) return null;
-    return vals.reduce((a,b)=>a+b,0)/vals.length;
+/* ===================== Composite & Diagnostics ===================== */
+function computeMeta(cats){
+  const valid = cats.filter(c=>c.score!=null);
+  const wbci = valid.length? Math.round(mean(valid.map(c=>c.score))) : null;
+
+  // Breadth: share of categories >= 60
+  const breadth = valid.length? Math.round(100 * valid.filter(c=>c.score>=60).length / valid.length) : 0;
+
+  // Synchronicity: average positive pairwise correlation of last 12 points
+  const aligned = valid.map(c=> c.catSeries.slice(-12).map(p=>p.s));
+  const n = aligned.length;
+  const cors=[];
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+    const a=aligned[i], b=aligned[j]; const m=Math.min(a.length,b.length);
+    const aa=a.slice(-m), bb=b.slice(-m);
+    const ma=mean(aa), mb=mean(bb);
+    let num=0, da=0, db=0;
+    for(let k=0;k<m;k++){ const x=aa[k]-ma, y=bb[k]-mb; num+=x*y; da+=x*x; db+=y*y; }
+    const r = (da&&db)? num/Math.sqrt(da*db) : 0;
+    cors.push(Math.max(0,r)); // only synch (co‑movement)
+  }
+  const synch = cors.length? Math.round(100 * mean(cors)) : 0;
+
+  // Shock: mean abs(last - prev) across categories (0..100 scale already)
+  const shock = Math.round(mean(valid.map(c=>{
+    const s=c.catSeries; if(s.length<2) return 0; return Math.abs(s.at(-1).s - s.at(-2).s);
+  })));
+
+  return {wbci, breadth, synch, shock};
+}
+
+/* ===================== Executive Summary (CIO) ===================== */
+function buildSummary(meta, prevScore, cats){
+  const b = bandOf(meta.wbci).name;
+  const delta = (Number.isFinite(prevScore) && Number.isFinite(meta.wbci))? (meta.wbci - prevScore) : 0;
+
+  const sorted = [...cats].sort((a,b)=> (b.score??-1)-(a.score??-1));
+  const pressures = sorted.slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`);
+  const cushions  = [...sorted].reverse().slice(0,2).map(c=>`${c.name.split(' / ')[0]} ${c.score}`);
+
+  const riskNarrow = meta.breadth<35;
+  const movingTogether = meta.synch>=65;
+  const fast = meta.shock>=40;
+
+  const para1 = `WBCI ${meta.wbci??'—'} — ${b}${delta?` (${delta>0?'+':''}${delta} vs last run)`:''}. Breadth ${meta.breadth}%, Synchronicity ${meta.synch}%, Shock ${meta.shock}.`;
+  const para2 = `Main pressures: ${pressures.join(', ')}. Offsets: ${cushions.join(', ')}.`;
+  let para3 = '';
+  if(riskNarrow && !movingTogether) para3 = 'Risk is concentrated and not yet systemic; deterioration is local rather than broad‑based.';
+  else if(!riskNarrow && movingTogether) para3 = 'Risk is broadening with high co‑movement — a setup where drawdowns accelerate if stress persists.';
+  else if(movingTogether && fast) para3 = 'Signals are moving together and quickly; crash vulnerability is elevated if this persists.';
+  else para3 = 'Signals are mixed; no single pillar dominates.';
+
+  let stance='';
+  if(meta.wbci<40) stance='Constructive but selective: stay invested, prefer quality balance sheets; keep light hedges.';
+  else if(meta.wbci<70) stance='Neutral to defensive: tighten risk, keep dry powder; retain macro hedges.';
+  else stance='Defensive: prioritize liquidity and capital preservation; reduce cyclical beta; consider tail‑risk hedges.';
+
+  const map = Object.fromEntries(cats.map(c=>[c.key,c]));
+  const watch = [];
+  if((map.rates?.score??0)>=60) watch.push('front‑anchored curve steepening (long rates up, front stable)');
+  if((map.credit?.score??0)<60) watch.push('decisive widening in HY OAS and systemic‑stress gauges');
+  if((map.house?.score??0)>=55) watch.push('persistent rise in weekly jobless claims');
+  if((map.usd?.score??0)>=60) watch.push('another leg higher in the USD');
+  if((map.energy?.score??0)>=60) watch.push('a renewed energy‑burden spike');
+
+  const para4 = `Portfolio stance: ${stance}`;
+  const para5 = `Watch next: ${watch.length? watch.join('; ') : 'breadth and synchronicity — a broadening turn would lift risk toward Red.'}`;
+
+  return [para1,para2,para3,para4,para5].map(p=>`<p>${p}</p>`).join('');
+}
+
+/* ===================== Charts ===================== */
+function bandColor(s){ const b = bandOf(s); return b.color; }
+
+function renderMini(container, data, score){
+  // data: [{t:'YYYY-MM-01', s:0..100}]
+  container.innerHTML = '';
+  const chart = LightweightCharts.createChart(container, {
+    width: container.clientWidth, height: 120,
+    layout:{background:{type:'solid',color:'transparent'},textColor:'#B9C3CF'},
+    grid:{vertLines:{color:'rgba(255,255,255,.04)'},
+          horzLines:{color:'rgba(255,255,255,.06)'}},
+    rightPriceScale:{borderVisible:false, scaleMargins:{top:0.2,bottom:0.2}},
+    timeScale:{borderVisible:false, timeVisible:false, secondsVisible:false, rightOffset:2, barSpacing:5},
+    handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true},
+    handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true}
   });
-
-  return { key:cat.key, name:cat.name, baseline:cat.baseline, color:cat.color, series:seriesData, score:catScore, spark };
-}
-
-function computeMeta(categoryScores){
-  const valid = categoryScores.filter(s=>s.score!=null);
-  const score = valid.length ? Math.round(valid.reduce((a,b)=>a+b.score,0)/valid.length) : null;
-  // Breadth = share of categories with score >= 60
-  const breadth = valid.length ? Math.round(100*valid.filter(s=>s.score>=60).length/valid.length) : 0;
-  // Synchronicity = std dev of day-over-day changes (low std => synchronized). Here we proxy with rolling alignment:
-  // We compare last two spark points across categories; share with same direction as the majority.
-  let sync = 0;
-  try{
-    const dirs = valid.map(c=>{
-      const s=c.spark; if(!s || s.length<2) return 0;
-      const d=s[s.length-1]-s[s.length-2]; return d>=0 ? 1 : -1;
-    });
-    const sum = dirs.reduce((a,b)=>a+b,0);
-    const maj = sum>=0 ? 1 : -1;
-    const share = dirs.length ? dirs.filter(d=>d===maj).length/dirs.length : 0;
-    sync = Math.round(100*share);
-  }catch{ sync = 0; }
-  // Shock = average absolute change in last step * 100
-  let shock = 0;
-  try{
-    const deltas = valid.map(c=>{
-      const s=c.spark; if(!s || s.length<2) return 0;
-      return Math.abs((s[s.length-1]??0)-(s[s.length-2]??0));
-    });
-    shock = Math.round(100 * (deltas.reduce((a,b)=>a+b,0)/(deltas.length||1)));
-  }catch{ shock = 0; }
-  return {score, breadth, synch:sync, shock};
-}
-
-/* =========================================================
-   EXEC SUMMARY (CIO-STYLE, DETERMINISTIC)
-========================================================= */
-function ciSummary(meta, prevMeta, cats){
-  const band = bandOf(meta.score).name;
-  const delta = prevMeta && Number.isFinite(prevMeta.score) ? meta.score - prevMeta.score : 0;
-
-  // Leaders & cushions
-  const sorted = [...cats].sort((a,b)=> (b.score??-1) - (a.score??-1));
-  const top = sorted.slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`).join(', ');
-  const bottom = [...sorted].reverse().slice(0,3).map(c=>`${c.name.split(' / ')[0]} ${c.score}`).join(', ');
-
-  // Interpretations
-  const riskNarrow = meta.breadth < 35;
-  const movingTogether = meta.synch >= 65;
-  const fastMove = meta.shock >= 40;
-
-  const open = `WBCI ${meta.score} — ${band}${delta?` (${delta>0?'+':''}${delta} vs last run)`:''}. Breadth ${meta.breadth}% (share of pillars > Amber), Synchronicity ${meta.synch}%, Shock ${meta.shock}.`;
-  const drivers = `Main pressures: ${top}. Offsets: ${bottom}.`;
-  let interp = '';
-  if(riskNarrow && !movingTogether){
-    interp = `Risk is concentrated and not yet systemic. Co‑movement is low; deterioration is patchy.`;
-  }else if(!riskNarrow && movingTogether){
-    interp = `Risk is broadening with high co‑movement — conditions where drawdowns accelerate if stress persists.`;
-  }else if(movingTogether && fastMove){
-    interp = `Signals are moving together and doing so quickly. Crash vulnerability is elevated if this persists.`;
-  }else{
-    interp = `Signals are mixed; no single pillar dominates.`;
-  }
-
-  // stance
-  let stance = '';
-  if(meta.score < 40){
-    stance = `Constructive but selective: stay invested, favor quality balance sheets; keep light hedges.`;
-  }else if(meta.score < 70){
-    stance = `Neutral/defensive: use dips selectively; tighten risk, keep dry powder; hold macro hedges.`;
-  }else{
-    stance = `Defensive: prioritize liquidity and capital preservation; reduce beta and cyclicals; consider tail‑risk hedges.`;
-  }
-
-  // watchlist rules
-  const want = [];
-  const catMap = Object.fromEntries(cats.map(c=>[c.key, c]));
-  if((catMap.rates?.score??0) >= 60) want.push('front‑anchored curve steepening (10Y–3M ↑ while front end stable)');
-  if((catMap.credit?.score??0) <= 50) want.push('clear HY OAS and systemic‑stress widening');
-  if((catMap.household?.score??0) <= 55) want.push('persistent rise in weekly claims confirming softer labor');
-  if((catMap.usd?.score??0) >= 60) want.push('further USD strength tightening global conditions');
-  if((catMap.energy?.score??0) >= 60) want.push('energy‑burden spike pressuring margins and demand');
-
-  const watch = `Watch next: ${want.length? want.map((x,i)=>`${i+1}) ${x}`).join(', ') : 'no single trigger; monitor breadth & synchronicity for broadening.'}`;
-
-  return [
-    `<p><b>${open}</b></p>`,
-    `<p>${drivers}</p>`,
-    `<p>${interp} Momentum ${meta.shock<15 ? 'is calm' : (meta.shock<40? 'is turning' : 'is fast‑worsening')}.</p>`,
-    `<p><b>Portfolio stance:</b> ${stance}</p>`,
-    `<p class="small muted">${watch}</p>`
-  ].join('');
-}
-
-/* =========================================================
-   RENDERING
-========================================================= */
-function setDonut(score){
-  const arc = qs('#arc'), num=qs('#scoreNum'), bandChip=qs('#scoreBand');
-  const C = 2*Math.PI*46; // circumference
-  const pct = Math.max(0, Math.min(100, Number(score)||0));
-  arc.setAttribute('stroke-dasharray', `${C} ${C}`);
-  arc.setAttribute('stroke-dashoffset', String(C * (1 - pct/100)));
-  const b = bandOf(score);
-  arc.setAttribute('stroke', b.color);
-  num.textContent = Number.isFinite(score) ? score : '--';
-  bandChip.textContent = `WBCI: ${Number.isFinite(score)?score:'--'} — ${b.name}`;
-  bandChip.style.background = '#2a2115';
-  bandChip.style.border = '1px solid #4a3a1c';
-}
-
-function renderMeta(meta, loadedCount){
-  qs('#badgeBand').textContent = `Band: ${bandOf(meta.score).name}`;
-  qs('#badgeBreadth').textContent = `Breadth: ${meta.breadth}%`;
-  qs('#badgeSync').textContent = `Synchronicity: ${meta.synch}%`;
-  qs('#badgeShock').textContent = `Shock: ${meta.shock}`;
-  qs('#runMeta').textContent = `Last run: ${new Date().toLocaleString()} • Mode: ${qs('#mode').value} • Categories loaded: ${loadedCount}/${CATEGORIES.length}`;
-  setDonut(meta.score);
-}
-
-function drawSpark(canvas, values, color){
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = canvas.clientWidth*2;
-  const h = canvas.height= (canvas.clientHeight||120)*2;
-  ctx.scale(2,2);
-  // axes
-  ctx.strokeStyle = 'rgba(180,200,220,0.15)';
-  ctx.lineWidth = 1;
-  for(let i=0;i<=4;i++){
-    const y = 10 + i*((h/2-20)/4);
-    ctx.beginPath(); ctx.moveTo(36,y); ctx.lineTo(w/2-10,y); ctx.stroke();
-  }
-  // y labels (0..1)
-  ctx.fillStyle='#8fa5bb'; ctx.font='11px Inter, system-ui';
-  ctx.fillText('1.0',6,14); ctx.fillText('0.0',6,(h/2)-10);
-  // x axis
-  ctx.beginPath(); ctx.moveTo(36,(h/2)-20); ctx.lineTo(w/2-10,(h/2)-20); ctx.stroke();
-
-  const vals = values.map(v => v==null?null:Math.max(0,Math.min(1,v)));
-  const n = vals.length || 2;
-  const xscale = (w/2-50)/(n-1);
-  const yscale = (h/2-40);
-  ctx.lineWidth=2.4; ctx.strokeStyle=color; ctx.beginPath();
-  let started=false;
-  vals.forEach((v,i)=>{
-    if(v==null) return;
-    const x = 36 + i*xscale;
-    const y = 10 + (1-v)*yscale;
-    if(!started){ ctx.moveTo(x,y); started=true; }
-    else ctx.lineTo(x,y);
+  const area = chart.addAreaSeries({
+    lineColor:bandColor(score), lineWidth:2,
+    topColor:bandColor(score)+'33', bottomColor:bandColor(score)+'00'
   });
-  ctx.stroke();
+  const points = data.map(d=>({ time:d.t.slice(0,10), value:d.s }));
+  area.setData(points);
+  chart.timeScale().fitContent();
+
+  const ro = new ResizeObserver(()=> chart.applyOptions({width:container.clientWidth}));
+  ro.observe(container);
+  return chart;
 }
 
-function categoryCard(cat){
-  const band = bandOf(cat.score).name;
-  return `
-    <div class="col-12 col-6 cat">
-      <div class="head">
-        <div style="font-weight:800">${cat.name}</div>
-        <div class="score-pill">${cat.score==null?'—':cat.score}</div>
-      </div>
-      <div class="spark"><canvas id="cv_${cat.key}" height="120"></canvas></div>
-      <div class="legend"></div>
-      <div class="foot"><b>Baseline:</b> ${cat.baseline}</div>
-      <div class="small muted" style="margin-top:6px">Band: ${band}</div>
-    </div>
-  `;
+function renderFocus(el, datasets, activeKey){
+  el.innerHTML='';
+  const chart = LightweightCharts.createChart(el, {
+    width: el.clientWidth, height: 240,
+    layout:{background:{type:'solid',color:'transparent'},textColor:'#B9C3CF'},
+    grid:{vertLines:{color:'rgba(255,255,255,.04)'},
+          horzLines:{color:'rgba(255,255,255,.06)'}},
+    rightPriceScale:{borderVisible:false, scaleMargins:{top:0.15,bottom:0.15}},
+    timeScale:{borderVisible:false, timeVisible:true}
+  });
+  const series = {};
+  Object.entries(datasets).forEach(([k,arr])=>{
+    series[k] = chart.addLineSeries({color:'#7aa0ff', lineWidth:2, visible:(k===activeKey)});
+    series[k].setData(arr.map(d=>({time:d.t.slice(0,10), value:d.s})));
+  });
+  chart.timeScale().fitContent();
+  const ro = new ResizeObserver(()=> chart.applyOptions({width:el.clientWidth}));
+  ro.observe(el);
+  return {chart, series};
 }
 
-/* =========================================================
-   MAIN RUNNER
-========================================================= */
-let prevMeta = null;
+/* ===================== Main Runner ===================== */
+let prevScore = Number(localStorage.getItem('WBCI_LAST'))||null;
 
 async function run(){
-  qs('#runBtn').disabled = true;
-  saveKey();
-  const apiKey = loadKey();
-  if(!apiKey){ toast('Paste your FRED API key first.'); qs('#runBtn').disabled=false; return; }
+  qs('#runBtn').disabled=true;
+  const apiKey = qs('#fredKey').value.trim();
+  if(!apiKey){ toast('Paste your FRED API key'); qs('#runBtn').disabled=false; return; }
+  localStorage.setItem('FRED_KEY', apiKey);
 
-  const startTs = performance.now();
+  const start = new Date(); start.setFullYear(start.getFullYear()-10); start.setDate(1);
+  const startISO = start.toISOString().slice(0,10);
+
   try{
-    // load categories in sequence (mobile‑safe) — you can parallelize if you want to push harder
-    const cats = [];
-    for(const cfg of CATEGORIES){
-      const c = await loadCategory(cfg, apiKey);
+    // Load all categories (sequential for mobile reliability; change to Promise.all for speed)
+    const cats=[];
+    qs('#cards').innerHTML='';
+    for(const cfg of CATS){
+      const c = await loadCategory(cfg, apiKey, startISO);
       cats.push(c);
-      // progressive render
-      qs('#cats').insertAdjacentHTML('beforeend', categoryCard(c));
-      drawSpark(qs(`#cv_${c.key}`), c.spark, getComputedStyle(document.documentElement).getPropertyValue('--line1'));
+      // card
+      const card = document.createElement('div');
+      card.className='card';
+      card.innerHTML = `
+        <div class="head">
+          <div style="font-weight:800">${c.name}</div>
+          <div class="badge">${c.score==null?'—':c.score}</div>
+        </div>
+        <div class="mini" id="mini_${c.key}" style="height:120px"></div>
+        <div class="legend"></div>
+        <div class="caption"><b>Baseline:</b> ${c.why}</div>
+        <div class="note small">Band: ${bandOf(c.score).name}</div>
+      `;
+      qs('#cards').appendChild(card);
+      renderMini(card.querySelector('#mini_'+c.key), c.catSeries.slice(-24), c.score);
     }
 
-    // compute meta
-    const meta = computeMeta(cats);
-    renderMeta(meta, cats.length);
-    qs('#exec').innerHTML = ciSummary(meta, prevMeta, cats);
-    prevMeta = meta;
+    // Focus chart
+    const focusData = Object.fromEntries(cats.map(c=>[c.key, c.catSeries.slice(-36)]));
+    const defaultKey = cats[0]?.key;
+    const {chart:focusChart, series:focusSeries} = renderFocus(qs('#focusChart'), focusData, defaultKey||'rates');
+    const btns = qs('#focusBtns'); btns.innerHTML='';
+    cats.forEach(c=>{
+      const b=document.createElement('button'); b.textContent=c.name.split(' / ')[0];
+      b.onclick=()=>{
+        Object.entries(focusSeries).forEach(([k,s])=>s.applyOptions({visible:false}));
+        focusSeries[c.key].applyOptions({visible:true, color:bandColor(c.score)});
+      };
+      btns.appendChild(b);
+    });
 
-    const ms = Math.round(performance.now()-startTs);
-    toast(`Run complete in ${ms}ms`);
+    // Composite & diagnostics
+    const meta = computeMeta(cats);
+    setGauge(meta.wbci);
+    qs('#kvBand').textContent = `Band: ${bandOf(meta.wbci).name}`;
+    qs('#kvBreadth').textContent = `Breadth: ${meta.breadth}%`;
+    qs('#kvSync').textContent = `Synchronicity: ${meta.synch}%`;
+    qs('#kvShock').textContent = `Shock: ${meta.shock}`;
+    qs('#runMeta').textContent = `Last run: ${new Date().toLocaleString()} • Mode: ${qs('#mode').value} • Categories loaded: ${cats.length}/${CATS.length}`;
+
+    // Exec summary
+    qs('#exec').innerHTML = buildSummary(meta, prevScore, cats);
+    if(Number.isFinite(meta.wbci)) { localStorage.setItem('WBCI_LAST', String(meta.wbci)); prevScore = meta.wbci; }
+
+    qs('#msg').textContent='';
+    toast('Run complete');
   }catch(e){
     console.error(e);
-    toast(`Error: ${e.message||e}`);
-    qs('#exec').innerHTML = `<p class="risk">Load error. Check API key / network. Try again.</p>`;
+    qs('#exec').innerHTML = `<p style="color:#ffb4c2">Load error — check API key/network and try again.</p>`;
+    qs('#msg').textContent='Load error';
+    toast(e.message||'Load error');
   }finally{
     qs('#runBtn').disabled=false;
   }
 }
 
-/* =========================================================
-   INIT + EVENTS
-========================================================= */
-loadKey();
-qs('#runBtn').addEventListener('click', async()=>{ qs('#cats').innerHTML=''; await run(); });
-qs('#resetBtn').addEventListener('click', ()=>{ CACHE.clear(); toast('Local cache cleared.'); });
+function setGauge(score){
+  const C=314; // circumference (2πr with r=50)
+  const pct = Math.max(0,Math.min(100,Number(score)||0))/100;
+  qs('#arc').setAttribute('stroke-dasharray',`${C} ${C}`);
+  qs('#arc').setAttribute('stroke-dashoffset', String(C*(1-pct)));
+  const b=bandOf(score);
+  qs('#arc').setAttribute('stroke', b.color);
+  qs('#scoreNum').textContent = Number.isFinite(score)? score : '--';
+  qs('#bandChip').textContent = `WBCI: ${Number.isFinite(score)?score:'--'} — ${b.name}`;
+}
+
+/* ===================== Wire Up ===================== */
+(function init(){
+  const saved = localStorage.getItem('FRED_KEY')||'';
+  if(saved) qs('#fredKey').value=saved;
+  qs('#runBtn').addEventListener('click', run);
+  qs('#resetBtn').addEventListener('click', ()=>{ CACHE.clear(); toast('Cache cleared'); });
+})();
 </script>
 </body>
 </html>
