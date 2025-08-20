@@ -1,215 +1,73 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Marshall WBCI — World’s Best Crash Indicator</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
-  <style>
-    :root{
-      --bg:#0e1621;--panel:#121c27;--muted:#7a8aa0;--text:#e8f0ff;
-      --green:#29c17e;--amber:#f0b83a;--red:#ff5d5d;--ring:#1f2b3a;--chip:#1a2533;
-      --brand:#3b82f6;
-      --card-radius:14px;--gap:18px;--pad:18px;--shadow:0 10px 30px #0000003a;
-      font-synthesis-weight:none;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;background:var(--bg);color:var(--text);font:500 16px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue","Noto Sans",Ubuntu,Arial;
-      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-    }
-    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
-    h1{margin:0 0 14px;font-size:28px;letter-spacing:.2px}
-    .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
-    input[type=text],select{
-      background:#0c141e;border:1px solid #1f2a36;color:var(--text);
-      padding:10px 12px;border-radius:11px;min-width:280px;outline:none;
-    }
-    button{
-      background:var(--brand);color:#fff;border:0;border-radius:12px;padding:12px 16px;
-      font-weight:700;cursor:pointer;box-shadow:var(--shadow)
-    }
-    button.secondary{background:#1e293b}
-    .grid{display:grid;grid-template-columns:1fr;gap:var(--gap)}
-    @media(min-width:820px){ .grid{grid-template-columns:1.05fr .95fr}}
-    .panel{
-      background:var(--panel);border:1px solid #1e2a38;border-radius:var(--card-radius);
-      padding:var(--pad);box-shadow:var(--shadow)
-    }
-    .kpi{display:grid;grid-template-columns:120px 1fr;gap:18px;align-items:center}
-    .ring{
-      width:140px;height:140px;border-radius:50%;display:grid;place-items:center;
-      background:conic-gradient(var(--ring) 0turn,var(--ring) 1turn);position:relative
-    }
-    .ring::before{content:"";position:absolute;inset:10px;border-radius:50%;background:#0b121a;border:1px solid #1b2733}
-    .ring span{position:relative;font-size:36px;font-weight:800}
-    .badges{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{background:var(--chip);border:1px solid #223042;border-radius:999px;padding:7px 10px;color:#bcd1ea;font-size:13px}
-    .label{opacity:.85;margin-bottom:6px}
-    .exec h2,.cat h3{margin:0 0 10px}
-    .exec p{margin:0 0 10px}
-    .exec b{font-weight:800}
-    .cats{display:grid;gap:var(--gap)}
-    @media(min-width:820px){.cats{grid-template-columns:1fr 1fr}}
-    .cat{background:#0f1924;border:1px solid #1f2b3a;border-radius:var(--card-radius);padding:14px}
-    .spark{height:120px;margin:8px 0 10px;border-radius:10px;overflow:hidden;border:1px dashed #223042;background:#0c141e}
-    .scale{height:8px;border-radius:6px;background:linear-gradient(90deg,var(--green),#e7b53a,#ff6a6a)}
-    .note{color:#a7bdd6;font-size:14px;margin-top:8px}
-    .footer{margin:22px 0;color:#8ea6c3;font-size:13px;opacity:.8}
-    .err{color:#ff7a7a}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Marshall WBCI</title>
+<style>
+body{margin:0;font-family:sans-serif;background:#0e1621;color:#e7f0ff;text-align:center;padding:20px}
+h1{margin:0 0 20px}
+input,button{padding:10px;border-radius:6px;border:0;margin:5px}
+button{background:#3b82f6;color:#fff;font-weight:bold;cursor:pointer}
+#ring{width:160px;height:160px;border-radius:50%;margin:20px auto;
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;font-weight:bold;background:#1f2b3a;color:#fff}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Marshall WBCI — World’s Best Crash Indicator</h1>
+<h1>Marshall WBCI — Crash Indicator</h1>
+<input id="key" placeholder="FRED API key"/>
+<button onclick="run()">Run / Refresh</button>
 
-  <div class="bar">
-    <input id="apiKey" type="text" placeholder="FRED API key" />
-    <select id="mode">
-      <option value="advanced">Advanced (predictive tilt + caps)</option>
-      <option value="basic">Basic (equal weights)</option>
-    </select>
-    <button id="run">Run / Refresh</button>
-    <button id="reset" class="secondary">Reset Cache</button>
-    <span id="status" class="chip">Ready</span>
-  </div>
-
-  <div class="grid">
-    <section class="panel">
-      <div class="kpi">
-        <div class="ring" id="ring"><span id="scoreText">--</span></div>
-        <div>
-          <div class="label">WBCI:</div>
-          <div id="headline" style="font-weight:800;margin-bottom:8px;">--</div>
-          <div class="label">Composite = average of category risk percentiles vs each series’ own last decade (with sensible inverts).</div>
-          <div class="badges">
-            <div class="chip" id="band">Band: —</div>
-            <div class="chip" id="breadth">Breadth: —</div>
-            <div class="chip" id="sync">Synchronicity: —</div>
-            <div class="chip" id="shock">Shock: —</div>
-          </div>
-          <div id="meta" class="note" style="margin-top:8px;">—</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel exec">
-      <h2>Executive Summary</h2>
-      <div id="exec">Run the dashboard to generate a CIO‑grade summary.</div>
-    </section>
-  </div>
-
-  <section class="panel">
-    <h2>Categories</h2>
-    <div id="cats" class="cats"></div>
-  </section>
-
-  <div class="footer">Marshall WBCI v1.1 • Built on public FRED data • Caches per‑day for deterministic runs</div>
-</div>
+<div id="ring">--</div>
+<div id="summary">Enter API key and press Run.</div>
 
 <script>
-/* ----------------------------- CONFIG ---------------------------------- */
-const FRED_API_KEY_INPUT = document.getElementById('apiKey');
-const MODE_SEL  = document.getElementById('mode');
-const STATUS    = document.getElementById('status');
-
-const CATEGORIES = [
-  // Each category: id, title, representative series for sparkline (safe, well-known)
-  // items: { id: FRED series, invert: boolean, label }
-  {
-    id:'rates', title:'Rates / Curve', rep:'T10Y3M',
-    items:[
-      {id:'T10Y3M', invert:false, label:'10Y–3M spread (tightness/inversion)'},
-      {id:'T10Y2Y', invert:false, label:'10Y–2Y spread'},
-      {id:'DGS10',  invert:false, label:'10Y Treasury yield'}
-    ]
-  },
-  {
-    id:'credit', title:'Credit / Stress', rep:'BAMLH0A0HYM2',
-    items:[
-      {id:'BAMLH0A0HYM2', invert:false, label:'HY OAS (credit risk premium)'},
-      {id:'STLFSI4',      invert:false, label:'St. Louis Financial Stress (higher=tighter)'},
-      {id:'NFCI',         invert:false, label:'Chicago Fed NFCI (higher=tighter)'}
-    ]
-  },
-  {
-    id:'liquidity', title:'Liquidity', rep:'NFCI',
-    items:[
-      // We keep liquidity distinct but proxied by composite stress/conditions levels
-      {id:'NFCI',    invert:false, label:'Financial Conditions (higher=tighter)'},
-      {id:'SOFR',    invert:false, label:'SOFR (policy transmission)'}
-    ]
-  },
-  {
-    id:'usd', title:'USD / External', rep:'DTWEXBGS',
-    items:[
-      {id:'DTWEXBGS', invert:false, label:'Trade-weighted USD (broad)'}
-    ]
-  },
-  {
-    id:'energy', title:'Energy Shock', rep:'DCOILWTICO',
-    items:[
-      {id:'DCOILWTICO', invert:false, label:'WTI crude (burden proxy)'}
-    ]
-  },
-  {
-    id:'labor', title:'Labor / Household', rep:'ICSA',
-    items:[
-      {id:'ICSA',   invert:false, label:'Initial jobless claims (weekly)'},
-      {id:'UNRATE', invert:false, label:'Unemployment rate'}
-    ]
-  },
-  {
-    id:'activity', title:'Activity / Sentiment', rep:'UMCSENT',
-    items:[
-      {id:'UMCSENT', invert:true,  label:'UMich consumer sentiment (higher=healthier)'},
-      {id:'INDPRO',  invert:true,  label:'Industrial production index (higher=healthier)'}
-    ]
-  }
-];
-
-// Category weights (advanced) — predictive tilt + mild caps
-const CAT_WEIGHTS_ADV = {rates:0.25, credit:0.20, liquidity:0.10, usd:0.15, energy:0.10, labor:0.10, activity:0.10};
-const CAT_WEIGHTS_BASIC = {rates:1, credit:1, liquidity:1, usd:1, energy:1, labor:1, activity:1};
-
-/* ----------------------------- UTILS ----------------------------------- */
-const dayKey = ()=> new Date().toISOString().slice(0,10);
-const clamp  = (v,lo,hi)=> Math.max(lo, Math.min(hi,v));
-const mean   = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
-const percentile = (series, value) => {
-  const xs = series.filter(Number.isFinite).slice().sort((a,b)=>a-b);
-  if (!xs.length) return NaN;
-  let lo=0, hi=xs.length-1, idx=xs.length-1;
-  while (lo<=hi){ const mid=(lo+hi)>>1; if(xs[mid]<=value){idx=mid; lo=mid+1}else hi=mid-1 }
-  return (idx/(xs.length-1))*100;
+const SERIES = {
+  rates:["T10Y3M","T10Y2Y"],              // yield curves
+  credit:["BAMLH0A0HYM2"],               // HY spreads
+  usd:["DTWEXBGS"],                      // USD index
+  labor:["UNRATE"],                      // unemployment
+  activity:["UMCSENT"]                   // sentiment
 };
-const trend = (arr)=>{ // simple last-6 slope (normalized)
-  const n=Math.min(arr.length,6); if(n<3) return 0;
-  const ys=arr.slice(-n); const xs=[...Array(n)].map((_,i)=>i+1);
-  const xbar=mean(xs), ybar=mean(ys);
-  let num=0, den=0; for(let i=0;i<n;i++){ num+=(xs[i]-xbar)*(ys[i]-ybar); den+=(xs[i]-xbar)**2 }
-  if(!den) return 0; return num/den;
-};
-const bandColor = (score)=> score<40?getComputedStyle(document.documentElement).getPropertyValue('--green').trim()
-  : score<70?getComputedStyle(document.documentElement).getPropertyValue('--amber').trim()
-  : getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
 
-function setRing(score){
-  const ring = document.getElementById('ring');
-  const text = document.getElementById('scoreText');
-  if (!Number.isFinite(score)) {
-    ring.style.background = `conic-gradient(var(--ring) 0turn,var(--ring) 1turn)`;
-    text.textContent = '--'; return;
-  }
-  const frac = clamp(score/100,0,1);
-  const col  = bandColor(score);
-  ring.style.background = `conic-gradient(${col} 0turn ${frac}turn, var(--ring) ${frac}turn 1turn)`;
-  text.textContent = Math.round(score);
+async function fred(id,key){
+  const url=`https://api.stlouisfed.org/fred/series/observations?series_id=${id}&api_key=${key}&file_type=json`;
+  const r=await fetch(url);
+  const j=await r.json();
+  const vals=j.observations.map(o=>+o.value).filter(v=>!isNaN(v));
+  return vals;
 }
+function percentile(arr,v){
+  const xs=arr.slice().sort((a,b)=>a-b);
+  let i=xs.findIndex(x=>x>v);
+  if(i<0) i=xs.length;
+  return Math.round(100*i/xs.length);
+}
+function band(score){return score<40?"green":score<70?"orange":"red"}
 
-/* ----------------------------- FRED API -------------------------------- */
-const FRED = {
-  key(){ // from input or URL param ?fred=
-    const urlKey
+async function run(){
+  const key=document.getElementById("key").value.trim();
+  if(!key){alert("Enter API key");return}
+  document.getElementById("summary").innerText="Loading...";
+  let scores=[];
+  for(const [cat,ids] of Object.entries(SERIES)){
+    for(const id of ids){
+      try{
+        const vals=await fred(id,key);
+        const last=vals[vals.length-1];
+        const pct=percentile(vals,last);
+        scores.push(pct);
+      }catch(e){console.error(e)}
+    }
+  }
+  if(!scores.length){document.getElementById("summary").innerText="No data";return}
+  const wbci=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+  document.getElementById("ring").style.background=band(wbci);
+  document.getElementById("ring").innerText=wbci;
+  document.getElementById("summary").innerText=
+    `WBCI ${wbci} — ${wbci<40?"Low risk (Green)":wbci<70?"Medium (Amber)":"High risk (Red)"}`;
+}
+</script>
+</body>
+</html>
