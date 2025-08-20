@@ -1,1 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marshall WBCI — Crash Risk Model (Production Single-File)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+<style>
+  :root{
+    --bg:#0f1226; --panel:#161a38; --muted:#9aa2c9; --text:#eef0ff;
+    --ok:#1fd07a; --warn:#ffd166; --risk:#ff5c7a; --accent:#7ea6ff;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  header{padding:16px 14px 8px}
+  h1{margin:0 0 6px;font-size:18px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button{font:14px system-ui;border:0;border-radius:8px;padding:10px}
+  input{flex:1;background:#1b2148;color:var(--text)}
+  button{background:#2c3270;color:#fff;cursor:pointer}
+  main{padding:10px}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:900px){.grid{grid-template-columns:2fr 1fr}}
+  .card{background:var(--panel);border-radius:12px;padding:12px}
+  .kpi{display:flex;gap:12px;flex-wrap:wrap}
+  .kpi .pill{background:#0f1330;padding:8px 10px;border-radius:999px;color:var(--muted);font-weight:600}
+  .pill b{color:var(--text)}
+  .score{font-size:40px; font-weight:800}
+  .flag{font-size:12px;color:var(--muted)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .col{flex:1 1 260px}
+  .sub{color:var(--muted);font-size:12px}
+  .badge{padding:4px 8px;border-radius:12px;font-weight:700}
+  .g{background:rgba(31,208,122,.12);color:var(--ok)}
+  .y{background:rgba(255,209,102,.15);color:var(--warn)}
+  .r{background:rgba(255,92,122,.14);color:var(--risk)}
+  .muted{color:var(--muted)}
+  .mono{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap}
+  .err{color:var(--risk)}
+  .ok{color:var(--ok)}
+  .warn{color:var(--warn)}
+  .table{width:100%;border-collapse:collapse}
+  .table th,.table td{padding:6px 8px;border-bottom:1px solid #20254d}
+  .table th{font-weight:700;color:#cfd6ff;text-align:left}
+</style>
+</head>
+<body>
+<header>
+  <h1>Marshall WBCI — Crash Risk Model</h1>
+  <div class="bar">
+    <input id="apiKey" placeholder="Paste your FRED API key (32 chars, a–z0–9)" spellcheck="false" autocapitalize="none" autocomplete="off">
+    <button onclick="runModel()">Run / Refresh</button>
+    <button onclick="resetCache()">Reset Cache</button>
+    <button onclick="toggleExplain()">Explain</button>
+  </div>
+  <div class="sub">Live FRED pulls • 6-hour cache • Deterministic composite • iPhone-ready</div>
+</header>
 
+<main class="grid">
+  <section class="card">
+    <div class="row" style="align-items:center;">
+      <div class="col">
+        <div>Composite Crash Risk</div>
+        <div id="score" class="score">—</div>
+        <div id="scoreBadge" class="badge">—</div>
+        <div class="flag" id="asOf">—</div>
+      </div>
+      <div class="col">
+        <div class="kpi">
+          <div class="pill">Term Spread (10y–3m): <b id="kpi_term">—</b></div>
+          <div class="pill">Credit Spread (BAA–AAA): <b id="kpi_credit">—</b></div>
+          <div class="pill">Unemployment trend: <b id="kpi_unemp">—</b></div>
+          <div class="pill">Equity Drawdown: <b id="kpi_dd">—</b></div>
+          <div class="pill">NFCI: <b id="kpi_nfci">—</b></div>
+        </div>
+      </div>
+    </div>
+    <canvas id="chartComposite" height="140"></canvas>
+  </section>
+
+  <aside class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><b>Executive Summary</b></div>
+      <div class="sub" id="staleness">data freshness: —</div>
+    </div>
+    <div id="executive" style="margin-top:6px"></div>
+    <hr style="border:0;border-top:1px solid #20254d;margin:10px 0">
+    <div><b>Diagnostics</b></div>
+    <div id="diag" class="mono muted">Ready.</div>
+  </aside>
+
+  <section class="card">
+    <b>Indicator Charts</b>
+    <div class="row">
+      <div class="col"><div class="sub">10y–3m Term Spread (T10Y3M)</div><canvas id="chTerm" height="120"></canvas></div>
+      <div class="col"><div class="sub">BAA–AAA Credit Spread</div><canvas id="chCredit" height="120"></canvas></div>
+      <div class="col"><div class="sub">Unemployment rate (UNRATE)</div><canvas id="chUnemp" height="120"></canvas></div>
+      <div class="col"><div class="sub">S&P 500 (SP500)</div><canvas id="chSPX" height="120"></canvas></div>
+      <div class="col"><div class="sub">Chicago NFCI (NFCI)</div><canvas id="chNFCI" height="120"></canvas></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <b>Model Weights & Latest Values</b>
+    <table class="table" id="weightsTable">
+      <thead><tr><th>Indicator</th><th>Series</th><th>Weight</th><th>Latest</th><th>Z-score</th><th>Direction</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="card" id="explain" style="display:none">
+    <b>How the WBCI composite is built (plain English)</b>
+    <ol>
+      <li><b>Normalize</b> each indicator to a z-score using a 10-year rolling window so scales are comparable.</li>
+      <li><b>Direction</b>: If higher value = more stress (e.g., credit spreads), we keep sign; if higher value = safer (term spread positive), we invert sign so all risk points the same way.</li>
+      <li><b>Weight</b> five signals: Term 25%, Credit 25%, Unemployment trend 15%, Equity drawdown 20%, NFCI 15%.</li>
+      <li><b>Composite</b> = sum(weight × z). We map to traffic light:
+        <ul>
+          <li><span class="badge g">Green</span> &nbsp; if composite ≤ 0.5</li>
+          <li><span class="badge y">Amber</span> if 0.5 &lt; composite ≤ 1.0</li>
+          <li><span class="badge r">Red</span> &nbsp;&nbsp;&nbsp; if composite &gt; 1.0</li>
+        </ul>
+      </li>
+      <li><b>Freshness flags</b>: if any input older than 35 days (or 8 days for weekly series), we show a staleness warning.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+/*** ===== Settings ===== ***/
+const TTL_MS = 1000*60*60*6; // 6h cache
+const CACHE_KEY = 'wbci_cache_v1';
+const SERIES = {
+  T10Y3M: { id:'T10Y3M', name:'10y–3m Term Spread', freq:'daily', invertRisk:false }, // positive is safer
+  AAA:    { id:'AAA', name:'Moody’s AAA Yield', freq:'daily' },
+  BAA:    { id:'BAA', name:'Moody’s BAA Yield', freq:'daily' },
+  UNRATE: { id:'UNRATE', name:'Unemployment Rate', freq:'monthly', invertRisk:true }, // rising = risk
+  SP500:  { id:'SP500',  name:'S&P 500', freq:'daily', invertRisk:true }, // drawdown => risk (we compute)
+  NFCI:   { id:'NFCI',   name:'Chicago Fed NFCI', freq:'weekly', invertRisk:false } // higher = tighter = risk
+};
+// Model weights (sum = 1)
+const WEIGHTS = {
+  term: 0.25,     // T10Y3M (inverted when negative)
+  credit: 0.25,   // BAA - AAA
+  unemp: 0.15,    // UNRATE 6m slope
+  drawdown: 0.20, // SP500 % off 12m high
+  nfci: 0.15      // NFCI
+};
+// Thresholds for traffic-light
+const BANDS = { green: 0.5, amber: 1.0 };
+
+/*** ===== Utilities ===== ***/
+const qs = s=>document.querySelector(s);
+const fmtPct = (x,dp=1)=> (isFinite(x)? (x*100).toFixed(dp)+'%':'—');
+const fmt = (x,dp=2)=> isFinite(x)? x.toFixed(dp):'—';
+function daysBetween(a,b){ return Math.abs((+a - +b)/86400000); }
+function last(arr){ return arr[arr.length-1]; }
+
+/*** ===== Storage ===== ***/
+function resetCache(){
+  localStorage.removeItem(CACHE_KEY);
+  setDiag('Cache cleared.');
+}
+function setDiag(msg, cls){
+  const el=qs('#diag'); el.textContent = msg;
+  el.className = 'mono ' + (cls||'muted');
+}
+function saveCache(obj){ localStorage.setItem(CACHE_KEY, JSON.stringify({t:Date.now(), obj})); }
+function loadCache(){ const j=localStorage.getItem(CACHE_KEY); if(!j) return null;
+  try{ const o=JSON.parse(j); if(Date.now()-o.t<TTL_MS) return o.obj; }catch{}
+  return null;
+}
+
+/*** ===== FRED fetch ===== ***/
+async function fredObservations(series, key, start){
+  const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${series}&api_key=${key}&file_type=json`
+            + (start?`&observation_start=${start}`:'');
+  const res = await fetch(url,{cache:'no-store'});
+  if(!res.ok){ throw new Error(`HTTP ${res.status} for ${series}: ${await res.text()}`); }
+  const j = await res.json();
+  if(j.error_code){ throw new Error(`FRED ${series}: ${j.error_code} ${j.error_message}`); }
+  const data = j.observations.map(o=>({t:o.date, v: parseFloat(o.value)})).filter(p=>!isNaN(p.v));
+  return { series, data, lastDate: last(j.observations)?.date };
+}
+
+/*** ===== Stats ===== ***/
+function rollingStats(arr, window=252){ // for daily series ~1y
+  if(arr.length<window) window = Math.max(30, Math.floor(arr.length*0.6));
+  const sub = arr.slice(-window);
+  const mean = sub.reduce((a,b)=>a+b,0)/sub.length;
+  const sd = Math.sqrt(sub.reduce((a,b)=>a+(b-mean)**2,0)/(sub.length-1));
+  return { mean, sd: sd||1e-9 };
+}
+function slope(values, periods=6){ // simple slope over N periods
+  if(values.length<periods+1) return 0;
+  const a = values.slice(-periods-1);
+  return (last(a)-a[0]) / periods;
+}
+function zScore(current, mean, sd){ return (current-mean)/ (sd||1e-9); }
+
+/*** ===== Model pieces ===== ***/
+function computeCredit(baa, aaa){
+  // align by date
+  const m = new Map(aaa.map(p=>[p.t,p.v]));
+  const spread = [];
+  for(const p of baa){ if(m.has(p.t)) spread.push({t:p.t, v:p.v - m.get(p.t)}); }
+  return spread;
+}
+function pctDrawdown(spx, lookbackDays=252){
+  // % from 12m rolling max
+  const out=[]; let maxv=-Infinity, buf=[];
+  for(const p of spx){
+    buf.push(p.v);
+    if(buf.length>lookbackDays) buf.shift();
+    maxv = Math.max(...buf);
+    const dd = (p.v - maxv) / maxv; // ≤0
+    out.push({t:p.t, v:dd});
+  }
+  return out;
+}
+function latest(arr){ return arr.length?last(arr).v:null; }
+function latestDate(arr){ return arr.length?last(arr).t:null; }
+
+function freshnessTag(meta){
+  // Expect: daily (≤7d ok), weekly (≤14d), monthly (≤45d)
+  const today = new Date();
+  const flags = [];
+  const check=(label,date,freq)=>{
+    if(!date){ flags.push(`${label}: missing`); return; }
+    const d=new Date(date);
+    const age=daysBetween(today,d);
+    const lim = freq==='daily'?7: (freq==='weekly'?14:45);
+    if(age>lim) flags.push(`${label} stale (${Math.round(age)}d)`);
+  };
+  check('T10Y3M', meta.T10Y3M, 'daily');
+  check('AAA/BAA', meta.AAA && meta.BAA? Math.min(new Date(meta.AAA), new Date(meta.BAA)) : null, 'daily');
+  check('UNRATE', meta.UNRATE, 'monthly');
+  check('SP500', meta.SP500, 'daily');
+  check('NFCI', meta.NFCI, 'weekly');
+  return flags.length? ('⚠ ' + flags.join(' • ')) : 'All inputs fresh.';
+}
+
+/*** ===== Rendering ===== ***/
+let charts = {};
+function drawLine(id, series, label){
+  const ctx = qs(id).getContext('2d');
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type:'line',
+    data:{ datasets:[{label, data:series.map(p=>({x:p.t,y:p.v}))}] },
+    options:{
+      responsive:true, parsing:false,
+      normalized:true,
+      elements:{point:{radius:0}},
+      scales:{ x:{type:'time', time:{tooltipFormat:'yyyy-LL-dd'}}, y:{ ticks:{color:'#cfd6ff'} } },
+      plugins:{ legend:{labels:{color:'#cfd6ff'}}, tooltip:{mode:'index', intersect:false} }
+    }
+  });
+}
+function setBadge(score){
+  const el = qs('#scoreBadge');
+  el.textContent = '—';
+  el.className='badge';
+  if(score<=BANDS.green){ el.textContent='GREEN'; el.classList.add('g'); }
+  else if(score<=BANDS.amber){ el.textContent='AMBER'; el.classList.add('y'); }
+  else { el.textContent='RED'; el.classList.add('r'); }
+}
+
+/*** ===== Main Model ===== ***/
+async function runModel(){
+  setDiag('Running…');
+  const raw = qs('#apiKey').value.trim();
+  if(!/^[a-z0-9]{32}$/.test(raw)){
+    setDiag('Invalid API key. Must be exactly 32 chars a–z0–9.', 'err'); return;
+  }
+
+  // cache
+  const cached = loadCache();
+  if(cached && cached.key===raw){
+    setDiag('Loaded from cache.'); render(cached.payload); return;
+  }
+
+  try{
+    const start = '2010-01-01'; // enough for robust 10y windows
+    const [t10y3m, aaa, baa, unrate, spx, nfci] = await Promise.all([
+      fredObservations(SERIES.T10Y3M.id, raw, start),
+      fredObservations(SERIES.AAA.id, raw, start),
+      fredObservations(SERIES.BAA.id, raw, start),
+      fredObservations(SERIES.UNRATE.id, raw, start),
+      fredObservations(SERIES.SP500.id, raw, start),
+      fredObservations(SERIES.NFCI.id, raw, start)
+    ]);
+
+    // Build derived series
+    const credit = computeCredit(baa.data, aaa.data);            // BAA-AAA
+    const drawdown = pctDrawdown(spx.data, 252);                  // 12m drawdown
+    const unSlope = slope(unrate.data.map(p=>p.v), 6);            // 6-month slope
+
+    // Z-scores using rolling 10y-ish window on daily/weekly; monthly uses 10y of months
+    const zTerm   = (()=>{ const s=rollingStats(t10y3m.data.map(p=>p.v), 2520); return zScore(latest(t10y3m.data), s.mean, s.sd);} )();
+    const zCredit = (()=>{ const s=rollingStats(credit.map(p=>p.v), 2520); return zScore(latest(credit), s.mean, s.sd);} )();
+    const zUnemp  = (()=>{ // slope vs historical slope dist (proxy)
+      // Build monthly slopes over 10y
+      const vals = unrate.data.map(p=>p.v);
+      const slopes=[]; for(let i=7;i<vals.length;i++){ slopes.push((vals[i]-vals[i-6])/6); }
+      const s=rollingStats(slopes,120); return (unSlope - s.mean)/(s.sd||1e-9);
+    })();
+    const zDD     = (()=>{ const s=rollingStats(drawdown.map(p=>p.v), 2520); return zScore(latest(drawdown), s.mean, s.sd);} )();
+    const zNFCI   = (()=>{ const s=rollingStats(nfci.data.map(p=>p.v), 520);  return zScore(latest(nfci.data), s.mean, s.sd);} )();
+
+    // Direction: make positive = more risk across the board
+    const termComponent   = -zTerm * WEIGHTS.term;       // positive term spread is safer → invert
+    const creditComponent = +zCredit * WEIGHTS.credit;   // wider credit = risk
+    const unempComponent  = +zUnemp * WEIGHTS.unemp;     // rising unemployment = risk
+    const ddComponent     = -zDD * WEIGHTS.drawdown;     // more negative drawdown (z more negative) → risk, invert sign
+    const nfciComponent   = +zNFCI * WEIGHTS.nfci;       // tighter conditions = risk
+
+    const composite = termComponent + creditComponent + unempComponent + ddComponent + nfciComponent;
+
+    const payload = {
+      series: { t10y3m, aaa, baa, credit, unrate, spx, drawdown, nfci },
+      zs: { zTerm, zCredit, zUnemp, zDD, zNFCI },
+      components: { termComponent, creditComponent, unempComponent, ddComponent, nfciComponent },
+      composite,
+      metaDates: {
+        T10Y3M: t10y3m.lastDate, AAA: aaa.lastDate, BAA: baa.lastDate,
+        UNRATE: unrate.lastDate, SP500: spx.lastDate, NFCI: nfci.lastDate
+      }
+    };
+
+    saveCache({ key: raw, payload });
+    setDiag('✅ Loaded fresh from FRED.', 'ok');
+    render(payload);
+
+  } catch(e){
+    setDiag(`❌ ${e.message}`, 'err');
+  }
+}
+
+function render(p){
+  // KPI values
+  const t = latest(p.series.t10y3m.data);
+  const c = latest(p.series.credit);
+  const u = latest(p.series.unrate.data);
+  const dd= latest(p.series.drawdown);
+  const nf= latest(p.series.nfci.data);
+
+  qs('#kpi_term').textContent   = fmt(t,2);
+  qs('#kpi_credit').textContent = fmt(c,2)+' pts';
+  qs('#kpi_unemp').textContent  = fmt(u,2)+'%';
+  qs('#kpi_dd').textContent     = fmtPct(dd,1);
+  qs('#kpi_nfci').textContent   = fmt(nf,3);
+
+  // Score
+  qs('#score').textContent = fmt(p.composite,2);
+  setBadge(p.composite);
+  const meta = p.metaDates;
+  qs('#asOf').textContent = `as of: T10Y3M ${meta.T10Y3M} • AAA ${meta.AAA} • BAA ${meta.BAA} • UNRATE ${meta.UNRATE} • SP500 ${meta.SP500} • NFCI ${meta.NFCI}`;
+  qs('#staleness').textContent = freshnessTag(meta);
+
+  // Executive summary (plain language)
+  qs('#executive').innerHTML = buildExecutive(p);
+
+  // Charts
+  drawLine('#chTerm', p.series.t10y3m.data, '10y–3m Spread');
+  drawLine('#chCredit', p.series.credit, 'BAA–AAA');
+  drawLine('#chUnemp', p.series.unrate.data, 'UNRATE');
+  drawLine('#chSPX', p.series.spx.data, 'SP500');
+  drawLine('#chNFCI', p.series.nfci.data, 'NFCI');
+
+  // Composite history proxy: rolling sum of standardized inputs (for display)
+  // Build a tiny composite series for the last 3 years
+  const len = Math.min(
+    p.series.t10y3m.data.length,
+    p.series.credit.length,
+    p.series.unrate.data.length,
+    p.series.drawdown.length,
+    p.series.nfci.data.length
+  );
+  const comp = [];
+  for(let i=len-600;i<len;i++){
+    if(i<0) continue;
+    const zt = (p.series.t10y3m.data[i]?.v - p.zsBaseTermMean??0)/(p.zsBaseTermSd??1);
+    // (For the compact chart, reuse latest z’s; it’s illustrative only)
+  }
+  // To keep UI responsive, show a 90-day composite spark derived from weighted raw changes:
+  const last90 = [];
+  const tData = p.series.t10y3m.data.slice(-90);
+  const cData = p.series.credit.slice(-90);
+  const uData = p.series.unrate.data.slice(-90);
+  const dData = p.series.drawdown.slice(-90);
+  const nData = p.series.nfci.data.slice(-90);
+  for(let i=0;i<Math.min(tData.length,cData.length,uData.length,dData.length,nData.length);i++){
+    const s = WEIGHTS.term*(tData[i].v) + WEIGHTS.credit*(cData[i].v) +
+              WEIGHTS.unemp*(uData[Math.max(0,i)].v) + WEIGHTS.drawdown*(dData[i].v) +
+              WEIGHTS.nfci*(nData[i].v);
+    last90.push({x:tData[i].t, y:s});
+  }
+  const ctx = qs('#chartComposite').getContext('2d');
+  if(charts.comp) charts.comp.destroy();
+  charts.comp = new Chart(ctx,{
+    type:'line',
+    data:{datasets:[{label:'Composite (recent, unnormalized)', data:last90}]},
+    options:{responsive:true,parsing:false,elements:{point:{radius:0}},scales:{x:{type:'time'}}}
+  });
+
+  // Weights table
+  const tbody = qs('#weightsTable tbody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Term Spread (10y–3m)','T10Y3M',WEIGHTS.term, t,  p.zs.zTerm,  'Higher safer → inverted'],
+    ['Credit Spread (BAA–AAA)','BAA-AAA',WEIGHTS.credit, c, p.zs.zCredit, 'Wider = risk'],
+    ['Unemployment slope (6m)','UNRATE',WEIGHTS.unemp, slope(p.series.unrate.data.map(x=>x.v),6), p.zs.zUnemp,'Rising = risk'],
+    ['Equity drawdown (12m max)','SP500',WEIGHTS.drawdown, dd, p.zs.zDD, 'Deeper = risk'],
+    ['NFCI (Chicago Fed)','NFCI',WEIGHTS.nfci, nf, p.zs.zNFCI, 'Higher = tighter = risk']
+  ];
+  for(const r of rows){
+    const tr=document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td><td>${r[1]}</td><td>${fmt(r[2],2)}</td><td>${isFinite(r[3])?fmt(r[3],3):'—'}</td><td>${fmt(r[4],2)}</td><td>${r[5]}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function buildExecutive(p){
+  const badge = (p.composite<=BANDS.green)?'GREEN':(p.composite<=BANDS.amber?'AMBER':'RED');
+  const tone = (badge==='GREEN')? 'Low immediate crash risk signalled; conditions broadly supportive.'
+             : (badge==='AMBER')? 'Mixed conditions; pockets of stress—watch credit and macro closely.'
+             : 'Elevated crash risk; stress is building across multiple dimensions.';
+  const bullets = [];
+  // Term spread
+  if(latest(p.series.t10y3m.data)<0) bullets.push('Yield curve is inverted (10y–3m < 0), historically a recession risk marker.');
+  else bullets.push('Yield curve is positive; term premium supportive.');
+  // Credit
+  const credit = latest(p.series.credit);
+  bullets.push(`Credit spread (BAA–AAA) at ${fmt(credit,2)} pts ${credit>1.1?'(wider than typical)':'(benign)'} .`);
+  // Unemp
+  const unSlope6 = slope(p.series.unrate.data.map(x=>x.v),6);
+  bullets.push(`Unemployment 6-month slope ${unSlope6>0?`rising (+${fmt(unSlope6,2)}pp/6m)`:`flat to falling (${fmt(unSlope6,2)}pp/6m)`}.`);
+  // Drawdown
+  const dd = latest(p.series.drawdown);
+  bullets.push(`Equity drawdown from 12-month peak: ${fmtPct(dd,1)}.`);
+  // NFCI
+  const nf = latest(p.series.nfci.data);
+  bullets.push(`Financial conditions (NFCI): ${fmt(nf,3)} (${nf>0?'tighter':'looser'} than average).`);
+  return `<p><span class="badge ${badge==='GREEN'?'g':badge==='AMBER'?'y':'r'}">${badge}</span> &nbsp;Composite = <b>${fmt(p.composite,2)}</b>. ${tone}</p>
+          <ul>${bullets.map(x=>`<li>${x}</li>`).join('')}</ul>
+          <p class="sub">Note: This dashboard is educational; not investment advice.</p>`;
+}
+
+/*** ===== UX ===== ***/
+function toggleExplain(){
+  const el=qs('#explain'); el.style.display = (el.style.display==='none'?'block':'none');
+}
+function resetCache(){ localStorage.removeItem(CACHE_KEY); setDiag('Cache cleared.'); }
+
+/*** ===== Init (optional: auto-run if key cached) ===== ***/
+(() => {
+  const c = loadCache();
+  if(c){ qs('#apiKey').value=''; render(c.payload); setDiag('Showing cached model. Paste your key and Run for fresh.'); }
+})();
+</script>
+</body>
+</html>
